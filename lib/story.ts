@@ -163,7 +163,7 @@ export const project: Project = {
   name: "Northstar launch",
   client: "Northstar",
   description: "A focused launch story for the next chapter.",
-  progress: 68,
+  progress: 0,
   reviewDate: "Thu, 14 Nov",
 };
 
@@ -209,7 +209,7 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "02 / CAPTURE",
     title: "It starts with a conversation.",
     description:
-      "A client kickoff arrives as it happened: people, timing, and the words that will matter later.",
+      "The client kickoff is saved with its speakers, timestamps, and the exact words you may need to find later.",
     productState: cloneState(),
   },
   {
@@ -219,7 +219,7 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "03 / UNDERSTAND",
     title: "What happened.",
     description:
-      "VOII brings the decision and commitments forward without asking you to search through a wall of transcript.",
+      "VOII pulls the decision and commitments out of the transcript, so you can see what was agreed without replaying the call.",
     productState: cloneState(),
   },
   {
@@ -229,7 +229,7 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "04 / KNOWLEDGE",
     title: "What matters.",
     description:
-      "The direction becomes durable knowledge, still connected to the conversation that gave it meaning.",
+      "The decision becomes a searchable Knowledge entry, still linked to the conversation that produced it.",
     productState: cloneState(),
   },
   {
@@ -239,7 +239,7 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "05 / ACTION",
     title: "What comes next.",
     description:
-      "Commitments become clear owners and next steps. Nothing gets lost between agreeing and doing.",
+      "VOII turns commitments into tasks with clear owners and due dates, so agreeing leads directly to doing.",
     productState: cloneState(),
   },
   {
@@ -249,7 +249,7 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "06 / MOMENTUM",
     title: "Everything stays connected.",
     description:
-      "The conversation, knowledge, tasks, project, and calendar keep one shared thread — from what was said to what moves next.",
+      "The conversation, Knowledge entry, tasks, project, and calendar event stay linked, so everyone can see what was decided and what moves next.",
     productState: cloneState(),
   },
   {
@@ -259,31 +259,72 @@ export const storyScenes: StoryScene[] = [
     eyebrow: "07 / RESOLVE",
     title: "A little less to carry.",
     description:
-      "Not another place to check. A calmer way to keep the work moving.",
+      "Open the workspace and find the transcript, decision, owners, dates, and project progress in one place.",
     productState: cloneState(),
   },
 ];
 
-export const personaCopy: Record<PersonaId, { label: string; support: string; emphasis: string }> = {
+type PersonaPayload = {
+  type: "conversation" | "knowledge" | "task" | "project";
+  label: string;
+  title: string;
+  detail: string;
+  meta: string;
+  initial: string;
+};
+
+export const personaCopy: Record<PersonaId, { label: string; support: string; emphasis: string; payload: PersonaPayload }> = {
   individual: {
     label: "Individual",
-    support: "Keep your thinking, decisions, and next moves close at hand.",
+    support: "Record your calls, voice notes, and ideas, then find the important parts when you need them.",
     emphasis: "A quieter mind for the work that is yours.",
+    payload: {
+      type: "knowledge",
+      label: "Knowledge",
+      title: "Ideas worth returning to",
+      detail: "One thread from thought to next move.",
+      meta: "Connected to your work",
+      initial: "K",
+    },
   },
   student: {
     label: "Student",
-    support: "Turn seminars, group work, and ideas into something you can return to.",
+    support: "Capture lectures, seminars, and group work, then search and revisit the ideas worth keeping.",
     emphasis: "Your notes become a way forward.",
+    payload: {
+      type: "conversation",
+      label: "Conversation",
+      title: "Seminar discussion",
+      detail: "4 useful ideas kept after the room empties.",
+      meta: "Source stays attached",
+      initial: "C",
+    },
   },
   freelancer: {
     label: "Freelancer",
-    support: "Keep every client promise visible without making your process feel heavy.",
-    emphasis: "Make space for the work only you can do.",
+    support: "Keep client decisions, deliverables, owners, and due dates together with the call they came from.",
+    emphasis: "Every client promise stays visible.",
+    payload: {
+      type: "task",
+      label: "Tasks from the call",
+      title: "Northstar launch",
+      detail: "3 promises with owners and dates.",
+      meta: "Client kickoff attached",
+      initial: "T",
+    },
   },
   organization: {
     label: "Organization",
-    support: "Give every team conversation a useful afterlife — with the context intact.",
+    support: "Give your team one searchable record of decisions, tasks, and project context instead of scattered notes.",
     emphasis: "The work moves as one.",
+    payload: {
+      type: "project",
+      label: "Project",
+      title: "Shared launch direction",
+      detail: "One source everyone can return to.",
+      meta: "Shared workspace",
+      initial: "N",
+    },
   },
 };
 

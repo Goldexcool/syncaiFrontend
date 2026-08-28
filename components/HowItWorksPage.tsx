@@ -11,28 +11,28 @@ const flowSteps = [
     number: "01",
     label: "Conversation",
     title: "Start with what was said.",
-    copy: "VOII keeps the people, timing, and words of a conversation together — so the useful part has a place to begin.",
+    copy: "VOII saves the speakers, timestamps, and transcript together, so every decision has a clear source.",
   },
   {
     id: "knowledge",
     number: "02",
     label: "Knowledge",
     title: "Keep what matters.",
-    copy: "A decision becomes a durable piece of knowledge, still linked to the conversation that gave it context.",
+    copy: "A decision becomes a searchable Knowledge entry, still linked to the conversation that produced it.",
   },
   {
     id: "task",
     number: "03",
     label: "Tasks",
     title: "Make the next move visible.",
-    copy: "Commitments become clear owners and dates. The work stops living only in someone's memory.",
+    copy: "Commitments become tasks with clear owners and due dates, so the next move is visible to everyone involved.",
   },
   {
     id: "momentum",
     number: "04",
     label: "Momentum",
     title: "Let the work keep moving.",
-    copy: "The project has a thread to follow — from what happened, to what matters, to what moves next.",
+    copy: "The project connects the source conversation, Knowledge, Tasks, and calendar event in one workspace.",
   },
 ] as const;
 
@@ -90,7 +90,7 @@ function MomentumMini() {
         <div className="momentum-mini-node momentum-mini-node--project"><ObjectBadge type="project">N</ObjectBadge><span>Northstar launch</span></div>
         <span className="momentum-mini-line momentum-mini-line--one" /><span className="momentum-mini-line momentum-mini-line--two" /><span className="momentum-mini-line momentum-mini-line--three" />
       </div>
-      <div className="flow-object__meta"><span>Everything stays connected</span><span>68% in motion</span></div>
+      <div className="flow-object__meta"><span>Everything stays connected</span><span>Progress follows the work</span></div>
     </div>
   );
 }
@@ -115,7 +115,7 @@ export default function HowItWorksPage() {
   const [activeStep, setActiveStep] = useState(0);
 
   return (
-    <main className="marketing-page how-page bg-cream text-ink">
+    <main className="marketing-page how-page bg-cream text-ink" id="main-content">
       <SiteHeader />
       <section className="marketing-hero marketing-hero--how">
         <div className="marketing-hero__ambient" aria-hidden="true" />
@@ -123,7 +123,7 @@ export default function HowItWorksPage() {
         <div className="marketing-hero__content">
           <PageKicker>The work after the words</PageKicker>
           <h1>A conversation has an <em>afterlife.</em></h1>
-          <p>VOII gives what was said a calm path into knowledge, tasks, and momentum.</p>
+          <p>VOII turns a meeting, lecture, or client call into a searchable transcript, clear decisions, and tasks with owners and dates.</p>
           <ArrowLink href="#flow">See the thread unfold</ArrowLink>
         </div>
         <div className="marketing-hero__edge"><span>Conversation</span><span>Knowledge</span><span>Tasks</span><span>Momentum</span></div>
@@ -133,7 +133,7 @@ export default function HowItWorksPage() {
         <div className="flow-section__intro">
           <PageKicker>One conversation / four useful forms</PageKicker>
           <h2 id="flow-title">Nothing important has to disappear between the call and the work.</h2>
-          <p>Choose a moment to see how the same source keeps its meaning as it changes shape.</p>
+          <p>Select a stage to see the transcript become a decision, a task, and connected project progress.</p>
           <ProgressDots count={flowSteps.length} active={activeStep} />
           <div className="flow-step-list" role="tablist" aria-label="VOII flow steps">
             {flowSteps.map((item, index) => (
@@ -150,15 +150,15 @@ export default function HowItWorksPage() {
       </section>
 
       <section className="how-proof-section">
-        <div className="how-proof-section__heading"><PageKicker>Designed around the real objects of work</PageKicker><h2>It stays useful because the relationships stay visible.</h2></div>
+        <div className="how-proof-section__heading"><PageKicker>Designed around the real objects of work</PageKicker><h2>Find the source behind every decision and task.</h2></div>
         <div className="how-proof-grid">
-          <article><ObjectBadge type="conversation">C</ObjectBadge><h3>Source, not noise.</h3><p>Every useful piece can lead you back to the sentence, person, and moment it came from.</p></article>
-          <article><ObjectBadge type="knowledge">K</ObjectBadge><h3>Context, not clutter.</h3><p>Knowledge is concise enough to use and connected enough to trust.</p></article>
-          <article><ObjectBadge type="task">T</ObjectBadge><h3>Action, not ambiguity.</h3><p>Owners and dates turn a good conversation into a next move someone can make.</p></article>
+          <article><ObjectBadge type="conversation">C</ObjectBadge><h3>Source, not noise.</h3><p>Open any decision or task and return to the exact sentence, person, and moment it came from.</p></article>
+          <article><ObjectBadge type="knowledge">K</ObjectBadge><h3>Context, not clutter.</h3><p>Keep a concise decision searchable without losing the conversation that explains it.</p></article>
+          <article><ObjectBadge type="task">T</ObjectBadge><h3>Action, not ambiguity.</h3><p>Owners and due dates turn a good conversation into work someone can act on.</p></article>
         </div>
       </section>
 
-      <section className="dark-cta-band"><PageKicker>See what VOII does for your work</PageKicker><h2>Start with a conversation.</h2><ArrowLink href="/#story" inverse>Follow the full story</ArrowLink></section>
+      <section className="dark-cta-band"><PageKicker>See what VOII does for your work</PageKicker><h2>Start with a conversation.</h2><ArrowLink href="/signup" inverse>Start with VOII</ArrowLink></section>
       <SiteFooter />
     </main>
   );

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type KeyboardEvent as ReactKeyboardEvent, type SetStateAction } from "react";
+import Link from "next/link";
 import type { Transition } from "motion/react";
 import { AnimatePresence, motion } from "motion/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
-import { Logo, SiteHeader } from "@/components/SiteHeader";
+import { Logo, SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import {
   baseProductState,
   initialTasks,
@@ -49,24 +50,27 @@ function Intro({ onStart }: { onStart: () => void }) {
       <div className="intro__halo" aria-hidden="true" />
       <div className="intro__meta">
         <span>Workspace for the work between words</span>
-        <span>01 — 07</span>
+        <span>Private beta · Nigeria</span>
       </div>
       <div className="intro__content">
-        <p className="eyebrow">A calmer operating system for moving ideas forward</p>
+        <p className="eyebrow">Turn conversations into organized work</p>
         <h1 id="intro-title">
           The conversation
           <br />
           becomes <em>work.</em>
         </h1>
         <p className="intro__lede">
-          VOII keeps what was said, what matters, and what comes next in one living thread.
+          Record a meeting, lecture, or client call. VOII writes the summary, pulls out the decisions, and assigns tasks — with owners and dates already attached.
         </p>
-        <button className="button button--primary" type="button" onClick={onStart}>
-          Follow one conversation
-          <span className="button__arrow" aria-hidden="true">
-            ↓
-          </span>
-        </button>
+        <div className="intro__actions">
+          <button className="button button--primary" type="button" onClick={onStart}>
+            Follow one conversation
+            <span className="button__arrow" aria-hidden="true">↓</span>
+          </button>
+          <Link className="button button--outline" href="/signup">
+            Start with a conversation <span aria-hidden="true">↗</span>
+          </Link>
+        </div>
       </div>
       <div className="intro__bottomline">
         <span className="scroll-cue" aria-hidden="true">
@@ -118,7 +122,7 @@ function StoryCopy({
           </span>
           Replay the story
         </button>
-        <span className="story-copy__hint">Scroll slowly · the details are the point</span>
+        <span className="story-copy__hint">Follow the chapter</span>
       </div>
     </div>
   );
@@ -149,15 +153,11 @@ function Avatar({ initials, tone = "green" }: { initials: string; tone?: "green"
 
 function ProductChrome({ activeScene, taskProgress }: { activeScene: number; taskProgress: number }) {
   const sections = ["Conversations", "Knowledge", "Tasks", "Calendar"];
+  const activeSection = activeScene <= 1 ? 0 : activeScene <= 3 ? 1 : activeScene === 4 ? 2 : 3;
 
   return (
     <>
       <div className="product-stage__topbar">
-        <div className="product-stage__window-controls" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
         <div className="product-stage__workspace-name">
           <Logo compact />
           <span className="product-stage__slash">/</span>
@@ -183,7 +183,7 @@ function ProductChrome({ activeScene, taskProgress }: { activeScene: number; tas
         <div className="product-stage__section-label">Workspace</div>
         <div className="product-stage__sections">
           {sections.map((section, index) => (
-            <div className={`product-stage__section ${activeScene === index + 1 || (activeScene >= 5 && index === 3) ? "is-active" : ""}`} key={section}>
+            <div className={`product-stage__section ${activeSection === index ? "is-active" : ""}`} key={section}>
               <span className="product-stage__section-icon" aria-hidden="true">
                 {index === 0 ? "◌" : index === 1 ? "⌁" : index === 2 ? "□" : "▦"}
               </span>
@@ -326,7 +326,7 @@ function ProductStage({
   onSourceBlur: () => void;
 }) {
   const completedCount = tasks.filter((task) => task.status === "complete").length;
-  const taskProgress = Math.min(100, baseProductState.project.progress + completedCount * 10);
+  const taskProgress = Math.round((completedCount / tasks.length) * 100);
   const scene = storyScenes[activeScene];
 
   return (
@@ -339,10 +339,7 @@ function ProductStage({
             <h3>Northstar launch</h3>
           </div>
           <div className="canvas-head__actions">
-            <span className="canvas-head__privacy">Private workspace</span>
-            <button type="button" aria-label="More project actions">
-              ···
-            </button>
+            <span className="canvas-head__privacy">Private workspace · ready</span>
           </div>
         </div>
 
@@ -353,11 +350,10 @@ function ProductStage({
             <div className="arrival-card">
               <div className="arrival-card__kicker">
                 <span className="arrival-card__pulse" />
-                Your work, in motion
+                Workspace ready
               </div>
-              <p>
-                Every meaningful conversation leaves a trail. VOII helps you follow it.
-              </p>
+              <h4>Your next conversation has somewhere to go.</h4>
+              <p className="arrival-card__body">Record the call, then keep the decision, tasks, and progress attached to the project.</p>
               <div className="object-trail" aria-label="Conversation to momentum">
                 <span className="object-trail__item object-trail__item--conversation">Conversation</span>
                 <span className="object-trail__line" aria-hidden="true" />
@@ -404,16 +400,14 @@ function ProductStage({
               <div className="understanding-card">
                 <div className="understanding-card__head">
                   <span className="product-label">VOII understood</span>
-                  <span className="understanding-card__spark" aria-hidden="true">
-                    ✦
-                  </span>
+                  <span className="understanding-card__signal" aria-hidden="true" />
                 </div>
                 <h4>One clear direction.</h4>
                 <p>Keep the launch focused on the product story.</p>
                 <div className="understanding-card__divider" />
                 <div className="understanding-card__signals">
                   <span>
-                    <i className="signal-dot signal-dot--emerald" /> Decision
+                    <i className="signal-dot signal-dot--primary" /> Decision
                   </span>
                   <span>
                     <i className="signal-dot signal-dot--ink" /> 2 commitments
@@ -577,6 +571,59 @@ function ProductStage({
   );
 }
 
+function ProofSection({
+  tasks,
+  highlightedSource,
+  onToggleTask,
+  onSourceFocus,
+  onSourceBlur,
+}: {
+  tasks: Task[];
+  highlightedSource: string | null;
+  onToggleTask: (taskId: string) => void;
+  onSourceFocus: (sourceLineId: string) => void;
+  onSourceBlur: () => void;
+}) {
+  const completedCount = tasks.filter((task) => task.status === "complete").length;
+
+  return (
+    <section className="proof-section section-band" id="proof" aria-labelledby="proof-title">
+      <div className="proof-section__intro">
+        <p className="eyebrow">Show before explain</p>
+        <h2 id="proof-title">One conversation. Clear work.</h2>
+        <p>Record a meeting once. VOII gives you a searchable transcript and summary, pulls out the decisions, and creates tasks with owners and due dates.</p>
+        <p className="proof-section__metric" aria-label="A 34 minute conversation became one decision and three tasks with zero minutes of writing it up">
+          <strong>34 min</strong><span>conversation</span><b aria-hidden="true">→</b><strong>1</strong><span>decision</span><b aria-hidden="true">·</b><strong>3</strong><span>tasks</span><b aria-hidden="true">·</b><strong>0</strong><span>minutes of writing it up</span>
+        </p>
+        <p className="proof-section__trust"><strong>Private by default.</strong> Read how VOII handles your conversations <Link href="/privacy">before you begin.</Link></p>
+        <Link className="arrow-link" href="/how-it-works">See the full system <span className="arrow-link__icon" aria-hidden="true">↗</span></Link>
+      </div>
+      <div className="proof-stage">
+        <article className="proof-card proof-card--conversation" aria-labelledby="proof-conversation-title">
+          <ConversationHeader />
+          <h3 id="proof-conversation-title" className="sr-only">Client kickoff transcript</h3>
+          <Transcript lines={baseProductState.conversation.lines} highlightedSource={highlightedSource} />
+        </article>
+        <article className="proof-card proof-card--tasks" aria-labelledby="proof-tasks-title">
+          <div className="proof-card__head">
+            <div>
+              <span className="product-label">Tasks from the call</span>
+              <h3 id="proof-tasks-title">What comes next</h3>
+            </div>
+            <span className="proof-card__count">{completedCount} / {tasks.length}</span>
+          </div>
+          <p className="proof-card__hint">Focus a task to see the sentence it came from.</p>
+          <div className="task-list">
+            {tasks.map((task) => (
+              <TaskRow key={task.id} task={task} onToggle={onToggleTask} onFocus={onSourceFocus} onBlur={onSourceBlur} />
+            ))}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function StorySection({
   activeScene,
   setActiveScene,
@@ -658,6 +705,12 @@ function StorySection({
           pin: stage,
           pinSpacing: false,
           scrub: 1.05,
+          snap: {
+            snapTo: [...storyScenes.map((scene) => scene.start), 1],
+            delay: 0.08,
+            duration: { min: 0.2, max: 0.45 },
+            ease: "power2.out",
+          },
           anticipatePin: 1,
           invalidateOnRefresh: true,
           onUpdate: (trigger) => {
@@ -673,15 +726,16 @@ function StorySection({
       storyScenes.forEach((scene, sceneIndex) => {
         if (sceneIndex === 0) return;
         const previousScene = storyScenes[sceneIndex - 1];
+        const fadeOutDuration = Math.min(0.07, (scene.end - scene.start) * 0.5);
         timeline.to(
           `[data-story-layer="${previousScene.id}"]`,
-          { autoAlpha: 0, y: -20, duration: 0.11, ease: "power2.inOut" },
+          { autoAlpha: 0, y: -20, duration: fadeOutDuration, ease: "power2.inOut" },
           scene.start,
         );
         timeline.to(
           `[data-story-layer="${scene.id}"]`,
-          { autoAlpha: 1, y: 0, duration: 0.12, ease: "power3.out" },
-          scene.start,
+          { autoAlpha: 1, y: 0, duration: fadeOutDuration, ease: "power3.out" },
+          scene.start + fadeOutDuration,
         );
       });
 
@@ -691,6 +745,13 @@ function StorySection({
 
     return () => context.revert();
   }, [isMobileLayout, reducedMotion, setActiveScene]);
+
+  const handleReplay = useCallback(() => {
+    onReplay();
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0, { immediate: true });
+    }
+  }, [onReplay]);
 
   const handleManualScene = useCallback(
     (index: number) => {
@@ -712,7 +773,7 @@ function StorySection({
         <span className="story-section__backdrop-word">call</span>
       </div>
       <div className="story-stage relative grid h-screen" ref={stageRef}>
-        <StoryCopy activeScene={activeScene} persona={persona} onReplay={onReplay} />
+        <StoryCopy activeScene={activeScene} persona={persona} onReplay={handleReplay} />
         <div className="story-visual-column">
           <div className="story-progress" aria-label={`Story progress: scene ${activeScene + 1} of ${storyScenes.length}`}>
             <span className="story-progress__label">Story</span>
@@ -741,13 +802,6 @@ function StorySection({
 }
 
 function ThreadSection() {
-  const objects = [
-    { key: "C", label: "Conversation", copy: "What happened", className: "conversation" },
-    { key: "K", label: "Knowledge", copy: "What matters", className: "knowledge" },
-    { key: "T", label: "Tasks", copy: "What comes next", className: "task" },
-    { key: "N", label: "Project", copy: "What is moving", className: "project" },
-  ];
-
   return (
     <section className="thread-section section-band relative grid" aria-labelledby="thread-title">
       <div className="thread-section__intro">
@@ -756,23 +810,13 @@ function ThreadSection() {
           The value of a conversation is what it makes <em>possible.</em>
         </h2>
         <p>
-          VOII keeps the context attached as the shape of the work changes. No copy-pasting the important part into five different places.
+          VOII keeps the context attached as the shape of the work changes, so every useful object knows where it came from.
         </p>
       </div>
-      <div className="thread-map" aria-label="VOII object relationships">
-        <div className="thread-map__orbit thread-map__orbit--one" aria-hidden="true" />
-        <div className="thread-map__orbit thread-map__orbit--two" aria-hidden="true" />
-        <div className="thread-map__line" aria-hidden="true" />
-        {objects.map((object, index) => (
-          <div className={`thread-object thread-object--${object.className}`} key={object.label}>
-            <span className={`object-badge object-badge--${object.className}`}>{object.key}</span>
-            <div>
-              <strong>{object.label}</strong>
-              <span>{object.copy}</span>
-            </div>
-            {index < objects.length - 1 ? <span className="thread-object__arrow" aria-hidden="true">→</span> : null}
-          </div>
-        ))}
+      <div className="thread-section__note">
+        <span className="thread-section__note-label">The source stays attached</span>
+        <p>No copy-pasting the important part into five different places.</p>
+        <span className="thread-section__note-meta">Context moves with the work.</span>
       </div>
     </section>
   );
@@ -793,7 +837,7 @@ function PrincipleSection() {
     {
       number: "03",
       title: "Make momentum visible.",
-      copy: "Progress is not another report. It is the quiet confidence that the work knows where to go next.",
+      copy: "See what moved since the last conversation without asking anyone to reconstruct it for you.",
     },
   ];
 
@@ -809,7 +853,7 @@ function PrincipleSection() {
             <span className="principle-row__number">{principle.number}</span>
             <h3>{principle.title}</h3>
             <p>{principle.copy}</p>
-            <span className="principle-row__mark" aria-hidden="true">↗</span>
+            <span className="principle-row__mark" aria-hidden="true" />
           </article>
         ))}
       </div>
@@ -821,26 +865,59 @@ function PersonaSection({ persona, onSelect }: { persona: PersonaId; onSelect: (
   const current = personaCopy[persona];
   const personas = Object.keys(personaCopy) as PersonaId[];
 
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowDown" && event.key !== "ArrowLeft" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = (index + direction + personas.length) % personas.length;
+    const nextPersona = personas[nextIndex];
+    onSelect(nextPersona);
+    window.requestAnimationFrame(() => document.getElementById(`persona-tab-${nextPersona}`)?.focus());
+  };
+
   return (
     <section className="persona-section section-band relative grid" id="personas" aria-labelledby="persona-title">
-      <div className="persona-section__copy">
-        <p className="eyebrow">Make it yours</p>
-        <h2 id="persona-title">A better way to keep your head in the work.</h2>
+      <div className="persona-section__panel" id="persona-panel" role="tabpanel" aria-labelledby={`persona-tab-${persona}`} tabIndex={0}>
+        <div className="persona-section__copy">
+          <p className="eyebrow">Make it yours</p>
+          <h2 id="persona-title">A better way to keep your head in the work.</h2>
+          <AnimatePresence mode="wait">
+            <motion.p className="persona-section__support" key={persona} {...sceneMotion}>
+              {current.support}
+            </motion.p>
+          </AnimatePresence>
+        </div>
         <AnimatePresence mode="wait">
-          <motion.p className="persona-section__support" key={persona} {...sceneMotion}>
-            {current.support}
-          </motion.p>
+          <motion.article className="persona-section__payload" key={persona} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
+            <div className="persona-section__payload-head">
+              <span className={`persona-section__payload-badge persona-section__payload-badge--${current.payload.type}`} aria-hidden="true">{current.payload.initial}</span>
+              <div>
+                <span className="product-label">{current.payload.label}</span>
+                <strong>{current.payload.title}</strong>
+              </div>
+              <span className="persona-section__payload-status">VOII</span>
+            </div>
+            <p>{current.payload.detail}</p>
+            <div className="persona-section__payload-footer">
+              <span>{current.payload.meta}</span>
+              <span>↗ Source attached</span>
+            </div>
+          </motion.article>
         </AnimatePresence>
       </div>
       <div className="persona-selector" role="tablist" aria-label="Choose your VOII perspective">
         {personas.map((item) => (
           <button
             className={item === persona ? "is-active" : ""}
+            id={`persona-tab-${item}`}
             key={item}
             type="button"
             role="tab"
+            aria-controls="persona-panel"
             aria-selected={item === persona}
+            tabIndex={item === persona ? 0 : -1}
             onClick={() => onSelect(item)}
+            onKeyDown={(event) => handleTabKeyDown(event, personas.indexOf(item))}
           >
             <span className="persona-selector__dot" aria-hidden="true" />
             {personaCopy[item].label}
@@ -856,7 +933,35 @@ function PersonaSection({ persona, onSelect }: { persona: PersonaId; onSelect: (
   );
 }
 
-function Finale({ onStart, onHow }: { onStart: () => void; onHow: () => void }) {
+function PricingPreview() {
+  const plans = [
+    { name: "Free", price: "₦0", note: "Try the core memory engine" },
+    { name: "Personal", price: "₦8,500", note: "For professionals and students" },
+    { name: "Pro", price: "₦22,500", note: "For freelancers and consultants" },
+  ];
+
+  return (
+    <section className="pricing-preview section-band" aria-labelledby="pricing-preview-title">
+      <div className="pricing-preview__intro">
+        <p className="eyebrow">Start where you are</p>
+        <h2 id="pricing-preview-title">Memory first. More momentum when you need it.</h2>
+        <p>Every plan includes the same core: record conversations, search the transcript, and turn decisions into organized work.</p>
+        <Link className="arrow-link" href="/pricing">Compare all five plans <span className="arrow-link__icon" aria-hidden="true">↗</span></Link>
+      </div>
+      <div className="pricing-preview__plans">
+        {plans.map((plan) => (
+          <Link className="pricing-preview__plan" href="/pricing" key={plan.name}>
+            <span>{plan.name}</span>
+            <strong>{plan.price}<small>/ month</small></strong>
+            <p>{plan.note}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Finale() {
   return (
     <section className="finale relative flex min-h-screen items-center justify-center overflow-hidden" aria-labelledby="finale-title">
       <div className="finale__orb finale__orb--one" aria-hidden="true" />
@@ -872,19 +977,19 @@ function Finale({ onStart, onHow }: { onStart: () => void; onHow: () => void }) 
           <br />
           <em>conversation.</em>
         </h2>
-        <p>Let the work find its shape.</p>
+        <p>Leave with a searchable record, clear decisions, and tasks already assigned.</p>
         <div className="finale__actions">
-          <button className="button button--cream" type="button" onClick={onStart}>
+          <Link className="button button--cream" href="/signup">
             Start with a conversation <span aria-hidden="true">↗</span>
-          </button>
-          <button className="button button--outline-cream" type="button" onClick={onHow}>
+          </Link>
+          <Link className="button button--outline-cream" href="/how-it-works">
             See how VOII works <span aria-hidden="true">↓</span>
-          </button>
+          </Link>
         </div>
       </div>
       <div className="finale__footer">
         <Logo />
-        <span>Conversations · Knowledge · Tasks · Momentum</span>
+        <span>Conversation · Knowledge · Tasks · Momentum</span>
         <span>Made for the work after the words.</span>
       </div>
     </section>
@@ -910,8 +1015,8 @@ export default function VoiiExperience() {
     setTasks(initialTasks.map((task) => ({ ...task, status: "open" })));
     setHighlightedSource(null);
     setActiveScene(0);
-    window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
-  }, [reducedMotion]);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const startStory = useCallback(() => {
     scrollToTarget(document.getElementById("story"), null);
@@ -926,9 +1031,16 @@ export default function VoiiExperience() {
   }, []);
 
   return (
-    <main className="voii-page min-h-screen bg-cream font-sans text-ink">
+    <main className="voii-page min-h-screen bg-cream font-sans text-ink" id="main-content">
       <SiteHeader />
       <Intro onStart={startStory} />
+      <ProofSection
+        tasks={tasks}
+        highlightedSource={highlightedSource}
+        onToggleTask={toggleTask}
+        onSourceFocus={setHighlightedSource}
+        onSourceBlur={() => setHighlightedSource(null)}
+      />
       <StorySection
         activeScene={activeScene}
         setActiveScene={setActiveScene}
@@ -944,7 +1056,9 @@ export default function VoiiExperience() {
       <ThreadSection />
       <PrincipleSection />
       <PersonaSection persona={persona} onSelect={setPersona} />
-      <Finale onStart={startStory} onHow={startStory} />
+      <PricingPreview />
+      <Finale />
+      <SiteFooter />
     </main>
   );
 }

@@ -1,5 +1,5 @@
-import AuthPage from "@/components/AuthPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AuthPage mode="login" />;
+  redirect("/signin");
 }

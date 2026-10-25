@@ -1,39 +1,32 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "VOII — You had the conversation. VOII remembers what matters.";
+export const alt = "VOII — Notes that show their work";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** Generated from code, so there is no binary asset to keep in sync with
- *  the brand — and nothing invented. */
+/** Dusk sky, serif headline — the same language as the site (DESIGN.md). */
 export default function OpengraphImage() {
   return new ImageResponse(
     (
       <div
         style={{
-          width: "100%", height: "100%", display: "flex", flexDirection: "column",
-          justifyContent: "space-between", background: "#000000", color: "#ffffff",
-          padding: 72, fontFamily: "Helvetica, Arial, sans-serif",
+          width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between",
+          background: "linear-gradient(180deg, #3b4152 0%, #7a6a78 45%, #d9a58c 75%, #13110f 100%)",
+          color: "#ffffff", padding: 72, fontFamily: "Georgia, serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
-          <div style={{ width: 8, height: 26, background: "#ffffff" }} />
-          <div style={{ width: 8, height: 40, background: "#1da759" }} />
-          <div style={{ width: 8, height: 26, background: "#ffffff" }} />
-          <div style={{ marginLeft: 18, fontSize: 30, letterSpacing: 8, fontWeight: 700 }}>VOII</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+          <div style={{ width: 6, height: 14, background: "#ffffff", borderRadius: 3 }} />
+          <div style={{ width: 6, height: 32, background: "#ffffff", borderRadius: 3 }} />
+          <div style={{ width: 6, height: 22, background: "#ffffff", borderRadius: 3 }} />
+          <div style={{ marginLeft: 16, fontSize: 40 }}>VOII</div>
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 74, lineHeight: 1.04, letterSpacing: -2.5, fontWeight: 700 }}>
-            You had the conversation.
-          </div>
-          <div style={{ fontSize: 74, lineHeight: 1.04, letterSpacing: -2.5, fontWeight: 700, color: "#47bd6e" }}>
-            VOII remembers what matters.
-          </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 88, lineHeight: 1, letterSpacing: -3 }}>The notes that show</div>
+          <div style={{ fontSize: 88, lineHeight: 1.05, letterSpacing: -3, fontStyle: "italic" }}>their work.</div>
         </div>
-
-        <div style={{ fontSize: 27, color: "#b3b3b3", display: "flex" }}>
-          Notes, tasks, knowledge and follow-ups — from the call you already had.
+        <div style={{ fontSize: 26, color: "rgba(255,255,255,0.8)", display: "flex", fontFamily: "Helvetica, Arial, sans-serif" }}>
+          Meetings, client calls and lectures — every line linked to the moment it was said.
         </div>
       </div>
     ),

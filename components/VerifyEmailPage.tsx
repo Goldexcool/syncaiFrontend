@@ -91,7 +91,7 @@ function VerifyEmailContent() {
           type="button"
         >
           <span>{isAuthenticated ? "Open your workspace" : "Sign in to VOII"}</span>
-          <span aria-hidden="true">↗</span>
+          <span aria-hidden="true">→</span>
         </button>
       </AuthStatePanel>
     );
@@ -167,12 +167,12 @@ function VerifyFailed({ reason, message }: { reason: "no-token" | "failed"; mess
             {error ? <p className="auth-field__error">{error}</p> : null}
           </div>
           <button className="auth-submit" type="submit" disabled={isSending} aria-busy={isSending}>
-            <span>{isSending ? "Sending…" : "Send a new link"}</span><span aria-hidden="true">↗</span>
+            <span>{isSending ? "Sending…" : "Send a new link"}</span><span aria-hidden="true">→</span>
           </button>
         </form>
       )}
 
-      <Link className="auth-secondary-link" href="/signin">Back to sign in <span aria-hidden="true">↗</span></Link>
+      <Link className="auth-secondary-link" href="/signin">Back to sign in <span aria-hidden="true">→</span></Link>
     </AuthStatePanel>
   );
 }

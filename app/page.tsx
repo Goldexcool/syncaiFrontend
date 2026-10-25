@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import Home from "@/components/arc/Home";
+import { HomePage } from "@/components/Marketing";
 
 export const metadata: Metadata = {
-  title: "VOII — You had the conversation. VOII remembers what matters.",
-  description:
-    "VOII turns your conversations into organised notes, tasks, knowledge and follow-ups — so you can focus on what comes next.",
+  title: "VOII — Notes that show their work",
+  description: "VOII records your meetings, client calls and lectures, isolates the voice that matters, and returns notes, tasks and formulas — each linked to the moment it was said.",
 };
 
-// Previous design preserved at /classic.
 export default function Page() {
-  return <Home />;
+  return <HomePage />;
 }

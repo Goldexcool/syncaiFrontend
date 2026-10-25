@@ -82,7 +82,7 @@ function ResetPasswordContent() {
           more to pick the thread back up.
         </p>
         <Link className="auth-submit" href="/signin">
-          <span>Sign in to VOII</span><span aria-hidden="true">↗</span>
+          <span>Sign in to VOII</span><span aria-hidden="true">→</span>
         </Link>
       </AuthStatePanel>
     );
@@ -99,9 +99,9 @@ function ResetPasswordContent() {
           replaces anything sent before it.
         </p>
         <Link className="auth-submit" href="/forgot-password">
-          <span>Send a new reset link</span><span aria-hidden="true">↗</span>
+          <span>Send a new reset link</span><span aria-hidden="true">→</span>
         </Link>
-        <Link className="auth-secondary-link" href="/signin">Back to sign in <span aria-hidden="true">↗</span></Link>
+        <Link className="auth-secondary-link" href="/signin">Back to sign in <span aria-hidden="true">→</span></Link>
       </AuthStatePanel>
     );
   }
@@ -149,7 +149,7 @@ function ResetPasswordContent() {
         </div>
 
         <button className="auth-submit" type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-          <span>{isSubmitting ? "Updating…" : "Update password"}</span><span aria-hidden="true">↗</span>
+          <span>{isSubmitting ? "Updating…" : "Update password"}</span><span aria-hidden="true">→</span>
         </button>
       </form>
     </AuthStatePanel>

@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
-import AuthStage, { type StageIdentity } from "@/components/arc/AuthStage";
-import { Squish } from "@/components/arc/motion";
 import { forgotPassword, loginUser, registerUser } from "@/lib/api/auth";
 import { ApiRequestError } from "@/lib/api/client";
 
@@ -14,12 +12,7 @@ export type AuthMode = "login" | "signup" | "forgot-password" | "reset-password"
 type FormField = "fullName" | "email" | "password";
 type FormState = Record<FormField, string>;
 
-/**
- * Auth in the arc language: the form on the page ground, the product itself
- * building on the panel beside it. Each route owns one of the three canvas
- * colours so the threshold is legible before a word is read — blue to come
- * back, yellow to begin, magenta to recover.
- */
+/** Auth in the Dusk language: the form on paper, a note card on the dusk sky beside it. */
 const authContent: Record<AuthMode, { step: string; kicker: string; title: ReactNode; description: string; submit: string }> = {
   login: {
     step: "01",
@@ -85,26 +78,23 @@ export function AuthPageShell({
   mode,
   children,
   className = "",
-  identity,
 }: {
   mode: AuthMode;
   children: ReactNode;
   className?: string;
-  /** What the panel echoes back while the form is being filled. */
-  identity?: StageIdentity;
 }) {
   return (
-    <main className={`arc av av--${mode} ${className}`.trim()} id="main-content">
+    <main className={`av av--${mode} ${className}`.trim()} id="main-content">
       <section className="av__col">
         <header className="av__top">
           <Link className="av__logo" href="/" aria-label="VOII home"><Logo /></Link>
-          <Link className="av__back" href="/"><span aria-hidden="true">←</span> Back to voii.com</Link>
+          <Link className="av__back" href="/"><span aria-hidden="true">←</span> Back to home</Link>
         </header>
 
         <div className="av__body">{children}</div>
 
         <footer className="av__base">
-          <span>Conversation · Knowledge · Tasks · Momentum</span>
+          <span>© VOII</span>
           <span className="av__legal">
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
@@ -112,8 +102,14 @@ export function AuthPageShell({
         </footer>
       </section>
 
-      <aside className="av__aside">
-        <AuthStage identity={identity} mode={mode} />
+      <aside className="av__aside" aria-hidden="true">
+        <p className="av__quote">Sit at the back. <em>Hear the front.</em></p>
+        <div className="av__card">
+          <div className="win__bar"><span>Lectures / MTH 201</span><span className="chip chip--sage"><span className="dot" />Speaker isolated</span></div>
+          <p className="win__title">Integration by parts</p>
+          <div className="formula"><div className="formula__eq">∫ u dv = uv − ∫ v du</div><span className="src">12:04 · stated on the board</span></div>
+          <div className="row-item"><span>Problem set 4 · Q1–9</span><span className="chip chip--peach">Due Fri</span></div>
+        </div>
       </aside>
     </main>
   );
@@ -157,17 +153,17 @@ function ResetLinkSent({ email, onResend }: { email: string; onResend: () => voi
       </p>
       <div className="av-actions">
         <button className="auth-secondary-link" onClick={onResend} type="button">
-          Use a different address <span aria-hidden="true">↗</span>
+          Use a different address <span aria-hidden="true">→</span>
         </button>
         <Link className="auth-secondary-link" href="/signin">
-          Back to sign in <span aria-hidden="true">↗</span>
+          Back to sign in <span aria-hidden="true">→</span>
         </Link>
       </div>
     </div>
   );
 }
 
-function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity: StageIdentity) => void }) {
+function AuthForm({ mode }: { mode: AuthMode }) {
   const copy = authContent[mode];
   const router = useRouter();
   const { setAuth } = useAuth();
@@ -181,6 +177,11 @@ function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity
   const strength = useMemo(() => strengthOf(form.password), [form.password]);
 
   useEffect(() => {
+    const email = new URLSearchParams(window.location.search).get("email");
+    if (email) setForm((current) => ({ ...current, email }));
+  }, []);
+
+  useEffect(() => {
     if (rateLimitSeconds <= 0) return;
     const timer = window.setInterval(() => setRateLimitSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(timer);
@@ -188,9 +189,6 @@ function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity
 
   function updateField(field: FormField, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
-    // Outside the updater: React may run an updater during render, and calling
-    // the parent's setter from there is a set-state-in-render violation.
-    if (field === "fullName") onIdentity?.({ name: value });
     setFieldErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -319,11 +317,9 @@ function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity
           </div>
         ) : null}
 
-        <Squish className="av-go">
-          <button className="auth-submit" type="submit" disabled={isSubmitting || rateLimitSeconds > 0} aria-busy={isSubmitting}>
-            <span>{isSubmitting ? "Working…" : copy.submit}</span><span aria-hidden="true">↗</span>
-          </button>
-        </Squish>
+        <button className="auth-submit" type="submit" disabled={isSubmitting || rateLimitSeconds > 0} aria-busy={isSubmitting}>
+            <span>{isSubmitting ? "Working…" : copy.submit}</span><span aria-hidden="true">→</span>
+        </button>
       </form>
 
       <div className="auth-form-footer">
@@ -335,10 +331,9 @@ function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity
 }
 
 export default function AuthPage({ mode }: { mode: AuthMode }) {
-  const [identity, setIdentity] = useState<StageIdentity>({});
   return (
-    <AuthPageShell identity={identity} mode={mode}>
-      <AuthForm mode={mode} onIdentity={setIdentity} />
+    <AuthPageShell mode={mode}>
+      <AuthForm mode={mode} />
     </AuthPageShell>
   );
 }

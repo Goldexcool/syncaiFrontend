@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-/** One family, carrying display and text on its optical-size axis. */
-const bricolage = Bricolage_Grotesque({
-  display: "swap",
-  subsets: ["latin"],
-  variable: "--font-bricolage",
-});
+const newsreader = Newsreader({ subsets: ["latin"], weight: ["300", "400"], style: ["normal", "italic"], variable: "--font-newsreader", display: "swap" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
-const TITLE = "VOII — You had the conversation. VOII remembers what matters.";
+const TITLE = "VOII — Notes that show their work";
 const DESCRIPTION =
-  "VOII turns your conversations into organised notes, tasks, knowledge and follow-ups — so you can focus on what comes next.";
+  "VOII records your meetings, client calls and lectures, isolates the voice that matters, and returns notes, tasks and formulas — each linked to the moment it was said.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -45,17 +42,10 @@ const JSON_LD = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "NGN", description: "Free plan" },
 };
 
-/**
- * Applied before first paint so a stored theme never flashes the wrong one.
- * No stored value means the OS setting wins, which is the default state.
- */
-const THEME_BOOT = `(function(){try{var t=localStorage.getItem("voii-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
-
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html className={bricolage.variable} lang="en" suppressHydrationWarning>
+    <html className={`${newsreader.variable} ${geist.variable} ${geistMono.variable}`} lang="en">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}

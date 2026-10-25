@@ -130,7 +130,7 @@ function Onboarding() {
           </div>
           {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
           <button className="workspace-entry-page__continue" type="button" onClick={handlePathSubmit} disabled={isBusy} aria-busy={isBusy}>
-            {isBusy ? "Setting things up…" : "Continue"}<span aria-hidden="true">↗</span>
+            {isBusy ? "Setting things up…" : "Continue"}<span aria-hidden="true">→</span>
           </button>
         </div>
       ) : (
@@ -156,7 +156,7 @@ function Onboarding() {
             </div>
             {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
             <button className="workspace-entry-page__continue" type="submit" disabled={isBusy} aria-busy={isBusy}>
-              {isBusy ? "Saving…" : "Open your workspace"}<span aria-hidden="true">↗</span>
+              {isBusy ? "Saving…" : "Open your workspace"}<span aria-hidden="true">→</span>
             </button>
           </form>
         </div>
@@ -178,7 +178,7 @@ function WorkspaceEntry() {
         <span>{workspace?.name ?? "No workspace yet"}</span>
         <span>{user?.email}</span>
       </div>
-      <Link className="workspace-entry-page__link" href="/how-it-works">See how VOII works <span aria-hidden="true">↗</span></Link>
+      <Link className="workspace-entry-page__link" href="/how-it-works">See how VOII works <span aria-hidden="true">→</span></Link>
     </>
   );
 }
@@ -202,7 +202,7 @@ export default function ProtectedWorkspacePage({ kind }: { kind: "dashboard" | "
 
   return (
     <AuthGate>
-      <main className="arc workspace-entry-page" id="main-content">
+      <main className="workspace-entry-page" id="main-content">
         <header className="workspace-entry-page__header">
           <Link href="/" aria-label="VOII home"><Logo /></Link>
           <button className="workspace-entry-page__logout" type="button" onClick={handleLogout} disabled={isLoading}>

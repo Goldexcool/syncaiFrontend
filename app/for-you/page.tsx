@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import ForYouPage from "@/components/ForYouPage";
+import { ForYouPage } from "@/components/Marketing";
 
 export const metadata: Metadata = {
-  title: "For you — VOII",
-  description: "One connected workspace for individual work, study, client conversations, and teams.",
+  title: "VOII for teams and students",
+  description: "Meeting notes and commitments for teams; lecture mode with noise filtering and full maths notes for students.",
 };
 
 export default function Page() {

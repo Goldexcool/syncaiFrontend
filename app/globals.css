@@ -651,7 +651,7 @@ button { cursor: pointer; }
 @media print {
   @page { size: A4; margin: 18mm 16mm 20mm; }
   body { background: #fff !important; }
-  .app-page > *, .dashboard-page { display: none !important; }
+  .app-page > * { display: none !important; }
   .app-page { background: #fff; color: var(--ink); }
   .app-page > .app-main { display: block !important; padding: 0; max-width: none; }
   .app-main > :not(.print-doc) { display: none !important; }

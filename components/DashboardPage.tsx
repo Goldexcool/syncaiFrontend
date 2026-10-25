@@ -524,7 +524,7 @@ function MeetingRow({ meeting, detailed = false }: { meeting: Meeting; detailed?
     <div className="dashboard-row-meta"><StatusMark status={meeting.status} /><span>{sentenceCase(meeting.source || "conversation")}</span><span>{formatDate(meeting.updatedAt || meeting.createdAt)}</span></div>
     <div className="dashboard-meeting-row__main">
       <div><h3>{meeting.title}</h3>{meeting.shortSummary ? <p>{meeting.shortSummary}</p> : <p>{sentenceCase(meeting.status || "Ready to capture")}</p>}</div>
-      <div className="dashboard-row-end"><span>{meeting._count?.participants || 0} people</span></div>
+      <div className="dashboard-row-end"><span>{meeting.participantCount ?? meeting._count?.participants ?? 0} people</span></div>
     </div>
   </Link>;
 }

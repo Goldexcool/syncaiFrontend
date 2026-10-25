@@ -31,6 +31,7 @@ export type Meeting = {
   updatedAt?: string;
   createdBy?: PersonReference | null;
   _count?: { participants?: number };
+  participantCount?: number;
   participants?: Array<{ id: string; name: string; email?: string | null; role?: string | null }>;
 }
 

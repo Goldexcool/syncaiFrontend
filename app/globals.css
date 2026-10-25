@@ -613,6 +613,8 @@ button { cursor: pointer; }
 .board__card h3 { font-size: 14.5px; font-weight: 500; line-height: 1.35; }
 .board__card .src { display: inline-flex; align-items: center; gap: 6px; color: var(--sage); }
 .board__card .app-muted { font-size: 12.5px; }
+.board__move { align-self: flex-start; height: 28px; padding: 0 8px; border-radius: var(--r-pill); background: none; color: var(--muted-on-ink); border: 1px solid var(--line); font-size: 12px; }
+.board__move:hover { border-color: var(--line-2); color: #fff; }
 
 /* ── Notes: a textbook page, not a chat bubble ───────────────────────────── */
 .notes { font-size: 16px; line-height: 1.7; color: var(--ink); }

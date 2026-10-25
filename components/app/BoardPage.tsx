@@ -48,8 +48,7 @@ function BoardView() {
     setBoard(list[0] ? (await getBoard(list[0].id)).board : null);
   }
 
-  async function drop(columnId: string) {
-    const task = dragging;
+  async function drop(columnId: string, task = dragging) {
     setDragging(null);
     if (!task || !board) return;
     const from = board.columns.find((c) => c.tasks.some((t) => t.id === task.id));
@@ -90,6 +89,10 @@ function BoardView() {
               {[t.priority, t.dueDate && `due ${new Date(t.dueDate).toLocaleDateString()}`, t.assignees?.[0]?.user.fullName].filter(Boolean).join(" · ")}
             </p>
             {t.sourceMeetingId ? <Link className="src" href={`/meetings/${t.sourceMeetingId}`}><span className="dot" />From the conversation</Link> : null}
+            {/* Drag-and-drop doesn't exist on touch screens or keyboards — this does. */}
+            <select className="board__move" value={col.id} aria-label={`Move “${t.title}”`} onChange={(e) => void drop(e.target.value, t)}>
+              {board.columns.map((c) => <option key={c.id} value={c.id}>{c.id === col.id ? c.name : `→ ${c.name}`}</option>)}
+            </select>
           </article>)}
         </section>)}
       </div>}

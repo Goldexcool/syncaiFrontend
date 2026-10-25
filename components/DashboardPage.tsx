@@ -8,6 +8,7 @@ import { Logo } from "@/components/SiteHeader";
 import NewConversation from "@/components/app/NewConversation";
 import PortalPanel from "@/components/app/PortalPanel";
 import { ApiRequestError } from "@/lib/api/client";
+import { DataLoading, EmptyState, Icon, SectionHeading, StatusMark, displayName, formatDate, formatTime, getErrorMessage, initials, sentenceCase, type IconName } from "@/components/app/kit";
 import {
   createMeeting,
   createClient,
@@ -46,9 +47,9 @@ import {
 } from "@/lib/api/dashboard";
 
 type DashboardView = "overview" | "conversations" | "knowledge" | "tasks" | "projects" | "calendar" | "clients" | "team" | "settings";
-type Composer = "meeting" | "task" | "project" | "client" | "invite" | null;
+export type Composer = "meeting" | "task" | "project" | "client" | "invite" | null;
 
-type DashboardData = {
+export type DashboardData = {
   meetings: Meeting[];
   tasks: Task[];
   commitments: Commitment[];
@@ -91,87 +92,6 @@ const workspaceNav: Array<{ id: DashboardView; label: string; icon: IconName }> 
   { id: "clients", label: "Clients", icon: "clients" },
   { id: "team", label: "Team", icon: "team" },
 ];
-
-type IconName = "home" | "conversation" | "knowledge" | "check" | "project" | "calendar" | "clients" | "team" | "settings" | "search" | "bell" | "plus" | "arrow" | "close" | "refresh" | "external";
-
-function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
-  const paths: Record<IconName, React.ReactNode> = {
-    home: <><path d="m3 9 9-6 9 6" /><path d="M5 8.5V21h14V8.5" /><path d="M9 21v-7h6v7" /></>,
-    conversation: <><path d="M4 5.5h16v11H8l-4 3v-14Z" /><path d="M8 9.5h8M8 13h5" /></>,
-    knowledge: <><path d="M5 4.5h12a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2V4.5Z" /><path d="M7 20a2 2 0 0 1 2-2h10M9 8h6M9 11.5h5" /></>,
-    check: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 12 2.5 2.5L16 9" /></>,
-    project: <><path d="M3.5 7.5h6l2 2h9v9.5h-17v-11.5Z" /><path d="M3.5 7.5V5h5l2 2" /></>,
-    calendar: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M7 3v4M17 3v4M3.5 9h17M7.5 13h.01M11.5 13h.01M15.5 13h.01M7.5 16.5h.01M11.5 16.5h.01" /></>,
-    clients: <><circle cx="9" cy="8" r="3" /><path d="M3.5 19c.5-3 2.3-4.5 5.5-4.5s5 1.5 5.5 4.5M16 5.5a2.6 2.6 0 0 1 0 5M16.5 14.7c1.7.4 2.8 1.8 3 3.8" /></>,
-    team: <><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.2" /><path d="M3.5 19c.5-3 2.3-4.5 5.5-4.5s5 1.5 5.5 4.5M15 15c2.3.2 3.7 1.5 4.2 4" /></>,
-    settings: <><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" /><circle cx="12" cy="12" r="4" /></>,
-    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
-    bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></>,
-    plus: <><path d="M12 5v14M5 12h14" /></>,
-    arrow: <><path d="M5 19 19 5M8 5h11v11" /></>,
-    close: <><path d="m6 6 12 12M18 6 6 18" /></>,
-    refresh: <><path d="M20 11a8 8 0 0 0-14-4L4 9" /><path d="M4 4v5h5M4 13a8 8 0 0 0 14 4l2-2" /><path d="M20 20v-5h-5" /></>,
-    external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" /></>,
-  };
-
-  return <svg aria-hidden="true" fill="none" height={size} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 24 24" width={size}>{paths[name]}</svg>;
-}
-
-function displayName(fullName?: string | null, email?: string | null) {
-  return fullName?.trim() || email?.split("@")[0] || "there";
-}
-
-function initials(name?: string | null, email?: string | null) {
-  const source = displayName(name, email);
-  return source.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
-
-function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) {
-  if (!value) return "No date";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "No date" : new Intl.DateTimeFormat("en-NG", options).format(date);
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("en-NG", { hour: "numeric", minute: "2-digit" }).format(date);
-}
-
-function sentenceCase(value?: string | null) {
-  if (!value) return "Not started";
-  return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof ApiRequestError ? error.message : "We couldn’t load this part of your workspace.";
-}
-
-function StatusMark({ status }: { status?: string | null }) {
-  const normalized = status?.toLowerCase();
-  return <span className={`dashboard-status-mark dashboard-status-mark--${normalized === "done" || normalized === "completed" ? "done" : normalized === "failed" || normalized === "overdue" ? "attention" : "quiet"}`} aria-hidden="true" />;
-}
-
-function EmptyState({ title, body, action, onAction }: { title: string; body: string; action?: string; onAction?: () => void }) {
-  return <div className="dashboard-empty-state">
-    <span className="dashboard-empty-state__line" aria-hidden="true" />
-    <h3>{title}</h3>
-    <p>{body}</p>
-    {action && onAction ? <button className="dashboard-text-button" type="button" onClick={onAction}>{action}<Icon name="arrow" size={15} /></button> : null}
-  </div>;
-}
-
-function SectionHeading({ title, count, action, onAction }: { title: string; count?: number; action?: string; onAction?: () => void }) {
-  return <div className="dashboard-section-heading">
-    <div className="flex items-baseline gap-3"><h2>{title}</h2>{count !== undefined ? <span className="dashboard-count">{count}</span> : null}</div>
-    {action && onAction ? <button className="dashboard-text-button" type="button" onClick={onAction}>{action}<Icon name="arrow" size={14} /></button> : null}
-  </div>;
-}
-
-function DataLoading({ rows = 3 }: { rows?: number }) {
-  void rows;
-  return <div className="dashboard-loading-state" aria-label="Loading your workspace" role="status"><span className="dashboard-loading-state__mark" aria-hidden="true" /><p>Bringing your workspace together.</p></div>;
-}
 
 export default function DashboardPage() {
   const { user, workspace, logout } = useAuth();
@@ -487,7 +407,7 @@ function TeamView({ members, errors, onCompose }: { members: WorkspaceMember[]; 
   return <section className="dashboard-surface dashboard-surface--full"><SectionHeading title="Workspace members" count={members.length} action="Invite someone" onAction={onCompose} />{errors.members ? <InlineError message={errors.members} /> : members.length === 0 ? <EmptyState title="You are the first person here." body="Invite teammates when shared memory and shared projects become useful." action="Invite someone" onAction={onCompose} /> : <div className="dashboard-list dashboard-list--roomy">{members.map((member) => <article className="dashboard-member-row" key={member.id}><span className="dashboard-avatar">{initials(member.user.fullName, member.user.email)}</span><div><h3>{displayName(member.user.fullName, member.user.email)}</h3><p>{member.user.email}</p></div><span className="dashboard-role">{sentenceCase(member.role)}</span></article>)}</div>}</section>;
 }
 
-function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, isConnectingCalendar }: { data: DashboardData; onConnectCalendar: () => Promise<void>; onDisconnectCalendar: () => Promise<void>; isConnectingCalendar: boolean }) {
+export function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, isConnectingCalendar }: { data: DashboardData; onConnectCalendar: () => Promise<void>; onDisconnectCalendar: () => Promise<void>; isConnectingCalendar: boolean }) {
   const plan = typeof data.subscription?.plan === "string" ? data.subscription.plan : "free";
   const calendar = data.integrations.find((integration) => integration.type === "google_calendar");
   const calendarConnected = calendar?.status === "connected";
@@ -512,14 +432,14 @@ function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, isConnect
   </div>;
 }
 
-function UsageSummary({ usage }: { usage: UsageSummary | null }) {
+export function UsageSummary({ usage }: { usage: UsageSummary | null }) {
   if (!usage) return <EmptyState title="Usage is not available." body="We could not read your current usage. Refresh the workspace to try again." />;
   const entries = Object.entries(usage).filter(([, value]) => typeof value === "string" || typeof value === "number").slice(0, 5);
   if (entries.length === 0) return <EmptyState title="Your usage will appear here." body="As you capture conversations and create work, VOII will keep the workspace limits visible." />;
   return <div className="dashboard-usage-list">{entries.map(([key, value]) => <div className="dashboard-usage-row" key={key}><span>{sentenceCase(key)}</span><strong>{String(value)}</strong></div>)}</div>;
 }
 
-function MeetingRow({ meeting, detailed = false }: { meeting: Meeting; detailed?: boolean }) {
+export function MeetingRow({ meeting, detailed = false }: { meeting: Meeting; detailed?: boolean }) {
   return <Link href={`/meetings/${meeting.id}`} className={`dashboard-meeting-row ${detailed ? "dashboard-meeting-row--detailed" : ""}`}>
     <div className="dashboard-row-meta"><StatusMark status={meeting.status} /><span>{sentenceCase(meeting.source || "conversation")}</span><span>{formatDate(meeting.updatedAt || meeting.createdAt)}</span></div>
     <div className="dashboard-meeting-row__main">
@@ -529,29 +449,29 @@ function MeetingRow({ meeting, detailed = false }: { meeting: Meeting; detailed?
   </Link>;
 }
 
-function TaskRow({ task, detailed = false, onComplete }: { task: Task; detailed?: boolean; onComplete: (task: Task) => Promise<void> }) {
+export function TaskRow({ task, detailed = false, onComplete }: { task: Task; detailed?: boolean; onComplete: (task: Task) => Promise<void> }) {
   const done = task.status === "done";
   return <article className={`dashboard-task-row ${detailed ? "dashboard-task-row--detailed" : ""} ${done ? "is-done" : ""}`}><button className="dashboard-task-check" type="button" aria-label={done ? `${task.title} completed` : `Complete ${task.title}`} aria-pressed={done} onClick={() => void onComplete(task)}><span>{done ? "✓" : ""}</span></button><div className="dashboard-task-row__main"><h3>{task.title}</h3><div className="dashboard-row-meta"><span className={`dashboard-priority dashboard-priority--${task.priority || "medium"}`}>{sentenceCase(task.priority || "medium")}</span>{task.dueDate ? <span>Due {formatDate(task.dueDate)}</span> : <span>No due date</span>}{task.assignees?.[0]?.user ? <span>For {displayName(task.assignees[0].user.fullName, task.assignees[0].user.email)}</span> : null}</div></div>{detailed && task.sourceMeetingId ? <span className="dashboard-source-pill">Source linked</span> : null}</article>;
 }
 
-function CommitmentRow({ commitment, onComplete }: { commitment: Commitment; onComplete: (commitment: Commitment) => Promise<void> }) {
+export function CommitmentRow({ commitment, onComplete }: { commitment: Commitment; onComplete: (commitment: Commitment) => Promise<void> }) {
   const done = commitment.status === "done";
   return <article className={`dashboard-commitment-row ${done ? "is-done" : ""}`}><button className="dashboard-task-check" type="button" aria-label={done ? `${commitment.title} completed` : `Complete ${commitment.title}`} aria-pressed={done} onClick={() => void onComplete(commitment)}><span>{done ? "✓" : ""}</span></button><div><h3>{commitment.title}</h3><div className="dashboard-row-meta"><span>{commitment.project?.name || "Workspace"}</span>{commitment.dueDate ? <span>Due {formatDate(commitment.dueDate)}</span> : null}</div></div></article>;
 }
 
-function CalendarRow({ event, detailed = false }: { event: CalendarEvent; detailed?: boolean }) {
+export function CalendarRow({ event, detailed = false }: { event: CalendarEvent; detailed?: boolean }) {
   return <article className={`dashboard-calendar-row ${detailed ? "dashboard-calendar-row--detailed" : ""}`}><div className="dashboard-calendar-date"><strong>{new Intl.DateTimeFormat("en-NG", { day: "2-digit" }).format(new Date(event.startAt))}</strong><span>{new Intl.DateTimeFormat("en-NG", { month: "short" }).format(new Date(event.startAt))}</span></div><div><h3>{event.title}</h3><p>{formatTime(event.startAt)}{event.endAt ? ` – ${formatTime(event.endAt)}` : ""}{event.location ? ` · ${event.location}` : ""}</p></div>{event.botEnabled ? <span className="dashboard-source-pill">VOII bot on</span> : null}</article>;
 }
 
-function InlineError({ message }: { message: string }) {
+export function InlineError({ message }: { message: string }) {
   return <div className="dashboard-inline-error" role="status"><span>{message}</span><Icon name="refresh" size={14} /></div>;
 }
 
-function NotificationPopover({ notifications, onRead, onReadAll, onClose }: { notifications: Notification[]; onRead: (notification: Notification) => Promise<void>; onReadAll: () => Promise<void>; onClose: () => void }) {
+export function NotificationPopover({ notifications, onRead, onReadAll, onClose }: { notifications: Notification[]; onRead: (notification: Notification) => Promise<void>; onReadAll: () => Promise<void>; onClose: () => void }) {
   return <div className="dashboard-notification-popover" role="dialog" aria-label="Notifications"><div className="dashboard-notification-popover__header"><strong>Notifications</strong><button className="dashboard-icon-button" type="button" onClick={onClose} aria-label="Close notifications"><Icon name="close" size={16} /></button></div>{notifications.length === 0 ? <p className="dashboard-notification-empty">Nothing new here.</p> : <div className="dashboard-notification-list">{notifications.map((notification) => <button className={`dashboard-notification-row ${notification.read ? "is-read" : ""}`} key={notification.id} type="button" onClick={() => void onRead(notification)}><span className="dashboard-notification-dot" aria-hidden="true" /><span><strong>{notification.title}</strong><small>{notification.message}</small><time>{formatDate(notification.createdAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time></span></button>)}</div>}<button className="dashboard-notification-popover__footer" type="button" onClick={() => void onReadAll()}>Mark all as read</button></div>;
 }
 
-function ComposerPanel({ type, meetings, onClose, onCreated }: { type: Exclude<Composer, null>; meetings: Meeting[]; onClose: () => void; onCreated: (created: { kind: "meeting"; item: Meeting } | { kind: "task"; item: Task } | { kind: "project"; item: Project } | { kind: "client"; item: Client } | { kind: "invite"; email: string }) => void }) {
+export function ComposerPanel({ type, meetings, onClose, onCreated }: { type: Exclude<Composer, null>; meetings: Meeting[]; onClose: () => void; onCreated: (created: { kind: "meeting"; item: Meeting } | { kind: "task"; item: Task } | { kind: "project"; item: Project } | { kind: "client"; item: Client } | { kind: "invite"; email: string }) => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [contactEmail, setContactEmail] = useState("");

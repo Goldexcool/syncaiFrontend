@@ -15,6 +15,7 @@ export type Summary = {
   long?: string | null;
   notes?: string | null;
   decisions?: Array<{ title: string; description?: string }> | null;
+  blockers?: Array<{ title: string; description?: string; severity?: string }> | null;
   nextSteps?: Array<{ title: string; description?: string }> | null;
   questions?: Array<{ question: string; context?: string }> | null;
   topics?: string[] | null;
@@ -30,6 +31,7 @@ export type ActionItem = {
   ownerName?: string | null;
   dueDate?: string | null;
   priority: string;
+  confidence?: number | null;
   status: "pending_review" | "approved" | "rejected" | "converted";
   sourceQuote?: { text?: string; time?: number; speaker?: string | null } | null;
 };
@@ -87,8 +89,11 @@ export async function uploadRecording(meetingId: string, file: Blob, fileName: s
 // ── Action items → board ───────────────────────────────────────────────────
 
 export const listActionItems = (meetingId: string) => apiClient.get<{ actionItems: ActionItem[] }>(`/meetings/${meetingId}/action-items?page=1&limit=100`);
-export const updateActionItem = (meetingId: string, itemId: string, payload: Partial<Pick<ActionItem, "status" | "title">>) =>
+export const updateActionItem = (meetingId: string, itemId: string, payload: Partial<{ status: "pending_review" | "approved" | "rejected"; title: string; description: string; priority: string; dueDate: string | null }>) =>
   apiClient.patch<{ actionItem: ActionItem }>(`/meetings/${meetingId}/action-items/${itemId}`, payload);
+export const bulkUpdateActionItems = (meetingId: string, itemIds: string[], status: "pending_review" | "approved" | "rejected") =>
+  apiClient.post<{ updatedCount: number }>(`/meetings/${meetingId}/action-items/bulk-update`, { itemIds, status });
+export const listTasksForMeeting = (meetingId: string) => apiClient.get<{ tasks: Array<BoardTask & { boardId?: string | null; projectId?: string | null }> }>(`/tasks?page=1&limit=100&sourceMeetingId=${meetingId}`);
 export const convertToTasks = (meetingId: string, payload: { itemIds: string[]; projectId: string; boardId: string; columnId: string }) =>
   apiClient.post<{ tasks: unknown[] }>(`/meetings/${meetingId}/action-items/convert-to-tasks`, payload);
 
@@ -108,7 +113,9 @@ export const createCourse = (payload: { name: string; code?: string; lecturer?: 
 
 // ── Bot ────────────────────────────────────────────────────────────────────
 
-export const sendBot = (meetingId: string) => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/join`, { botName: "VOII Notetaker" });
+export const sendBot = (meetingId: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/join`, { botName });
+export const scheduleBot = (meetingId: string, joinAt: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/schedule`, { joinAt, botName });
+export const setEventBot = (eventId: string, enabled: boolean) => apiClient.patch<{ event: { id: string; botEnabled: boolean; meetingId?: string | null } }>(`/calendar/events/${eventId}/bot`, { enabled });
 export const getBotStatus = (meetingId: string) => apiClient.get<{ botSession?: { status: string; failureReason?: string | null } | null }>(`/meetings/${meetingId}/bot/status`);
 
 // ── Sharing ────────────────────────────────────────────────────────────────
@@ -182,3 +189,13 @@ export type TaskUpdateSuggestion = {
 };
 export const listTaskUpdates = (meetingId: string) => apiClient.get<{ updates: TaskUpdateSuggestion[] }>(`/meetings/${meetingId}/task-updates`);
 export const decideTaskUpdate = (meetingId: string, id: string, decision: "apply" | "dismiss") => apiClient.post(`/meetings/${meetingId}/task-updates/${id}/${decision}`, {});
+
+// ── Workspace usage (plan meter) ───────────────────────────────────────────
+
+export type UsageInfo = {
+  plan: string;
+  usage: { meetingsCreated: number; processingMinutesUsed: number; teamMembers: number };
+  limits: { meetingsPerMonth: number; processingMinutesPerMonth: number };
+  percentages: { meetingsPerMonth: number | null; processingMinutesPerMonth: number | null };
+};
+export const getUsageInfo = () => apiClient.get<UsageInfo>("/workspace/usage");

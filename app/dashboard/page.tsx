@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import DashboardPage from "@/components/DashboardPage";
+import Dashboard from "@/components/app/screens/Dashboard";
 
 export const metadata: Metadata = {
-  title: "Your workspace — VOII",
-  description: "Your conversations, decisions, and next moves in one place.",
+  title: "Dashboard — VOII",
+  description: "Your meetings, the action items waiting on you, and the work in motion.",
 };
 
 export default function Page() {
-  return <DashboardPage />;
+  return <Dashboard />;
 }

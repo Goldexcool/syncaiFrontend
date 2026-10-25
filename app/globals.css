@@ -435,7 +435,8 @@ button { cursor: pointer; }
 .dashboard-notification-popover__footer { width: 100%; padding: 12px; border: 0; background: none; color: var(--a-muted); font-size: 13px; }
 .dashboard-notification-popover__footer:hover { color: var(--a-text); }
 
-.dashboard-content { width: 100%; max-width: 1120px; margin: 0 auto; padding: clamp(28px, 4vw, 48px) clamp(16px, 3vw, 40px) 80px; display: flex; flex-direction: column; gap: 24px; }
+/* One frame for every app page: full width up to 1600px, same left edge and padding as full-bleed pages (board). */
+.dashboard-content { width: 100%; max-width: 1600px; margin: 0; padding: clamp(24px, 3vw, 40px) clamp(16px, 3vw, 40px) 80px; display: flex; flex-direction: column; gap: 24px; }
 .dashboard-content__header { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .dashboard-location { font-size: 13px; color: var(--a-muted); }
 .dashboard-content__header h1 { font-size: clamp(32px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.03em; margin: 8px 0 10px; }
@@ -632,7 +633,12 @@ button { cursor: pointer; }
 /* ── Public pages: client portal, shared notes (paper) ───────────────────── */
 .pub { min-height: 100vh; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; }
 .pub__bar { display: flex; align-items: center; height: 64px; padding: 0 clamp(16px, 4vw, 48px); border-bottom: 1px solid var(--line-paper); }
-.pub__main { width: 100%; max-width: 760px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) 16px 64px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+.pub__main { width: 100%; max-width: 1200px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) clamp(16px, 4vw, 48px) 64px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+/* Wide screens: cards side by side; titles, actions and long transcripts keep the full width. */
+@media (min-width: 1100px) {
+  .pub__main { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-content: start; align-items: start; column-gap: 24px; }
+  .pub__main > :not(.pub__card), .pub__main > .pub__card:has(.transcript) { grid-column: 1 / -1; }
+}
 .pub__main h1 { font-size: clamp(34px, 5vw, 56px); line-height: 1.04; letter-spacing: -0.03em; }
 .pub .app-eyebrow, .pub .app-muted, .pub .src { color: var(--muted); }
 .pub__card { border-radius: var(--r-md); background: #fbf8f3; border: 1px solid var(--line-paper); padding: clamp(18px, 4vw, 32px); display: flex; flex-direction: column; gap: 14px; }
@@ -677,7 +683,7 @@ button { cursor: pointer; }
   .print-doc footer { margin-top: 14mm; padding-top: 4mm; border-top: 0.5pt solid var(--line-paper); font: 400 8pt var(--mono); color: var(--muted); }
   /* Shared page prints its own content */
   .pub__bar, .pub__actions, .pub__foot, .pub__compose, .pub__main > .app-eyebrow, .pub__main > h1 { display: none !important; }
-  .pub__main { padding: 0; max-width: none; }
+  .pub__main { padding: 0; max-width: none; display: block; }
   .pub, .pub__card { background: #fff !important; border: 0 !important; padding: 0 !important; }
 }
 
@@ -788,7 +794,7 @@ button { cursor: pointer; }
 .shell-crumbs { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--a-muted); min-width: 0; overflow: hidden; white-space: nowrap; }
 .shell-crumbs .is-current { color: var(--a-text); }
 .shell-crumbs__sep { margin-right: 8px; color: rgba(19, 17, 15, 0.3); }
-.shell-content { width: 100%; padding: clamp(20px, 3vw, 32px) clamp(16px, 3vw, 32px) 48px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.shell-content { width: 100%; padding: clamp(24px, 3vw, 40px) clamp(16px, 3vw, 40px) 48px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .palette { position: fixed; top: 16vh; left: 50%; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); z-index: 42; border-radius: var(--r-md); background: var(--a-surface); border: 1px solid var(--a-line-2); box-shadow: var(--shadow-window); overflow: hidden; color: var(--a-text); }
 .palette__input { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--a-line); color: var(--a-accent-text); }
 .palette__input input { flex: 1; border: 0; outline: none; background: none; color: var(--a-text); font-size: 15px; }

@@ -135,7 +135,7 @@ function Onboarding() {
         </div>
       ) : (
         <div className="workspace-onboarding">
-          <form
+          <form method="post"
             className="auth-form"
             onSubmit={(event) => { event.preventDefault(); void handleWorkspaceSubmit(); }}
             noValidate

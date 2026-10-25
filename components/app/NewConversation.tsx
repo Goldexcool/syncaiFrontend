@@ -57,7 +57,7 @@ export default function NewConversation({ onClose }: { onClose: () => void }) {
       <div><p className="dashboard-location">New</p><h2>What are we capturing?</h2></div>
       <button className="dashboard-icon-button" type="button" onClick={onClose} aria-label="Close form">✕</button>
     </div>
-    <form onSubmit={submit}>
+    <form method="post" onSubmit={submit}>
       <div className="seg-toggle" role="radiogroup" aria-label="Kind">
         <button type="button" role="radio" aria-checked={kind === "meeting"} className={kind === "meeting" ? "is-active" : ""} onClick={() => setKind("meeting")}>Meeting or client call</button>
         <button type="button" role="radio" aria-checked={kind === "lecture"} className={kind === "lecture" ? "is-active" : ""} onClick={() => setKind("lecture")}>Lecture</button>

@@ -74,7 +74,7 @@ export default function PortalPanel({ clientId, clientName }: { clientId: string
         {messages.length ? messages.map((m) => <li key={m.id} className={m.fromTeam ? "thread__me" : ""}><span className="src">{m.authorName} · {new Date(m.createdAt).toLocaleString()}</span><p>{m.comment}</p></li>)
           : <li className="app-muted">No messages yet.</li>}
       </ol>
-      <form className="copy-row" onSubmit={send}>
+      <form method="post" className="copy-row" onSubmit={send}>
         <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder={`Reply to ${clientName}`} aria-label="Reply" />
         <button className="dashboard-primary-button" type="submit" disabled={!reply.trim()}>Send</button>
       </form>

@@ -283,7 +283,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       {formError ? <p className="auth-form__alert" role="alert">{formError}</p> : null}
       {rateLimitSeconds > 0 ? <p className="auth-form__status" role="status">Try again in {rateLimitSeconds}s.</p> : null}
 
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <form method="post" className="auth-form" onSubmit={handleSubmit} noValidate>
         {mode === "signup" ? renderField("fullName", "Full name", "text", "Your name", "name") : null}
         {renderField("email", "Email address", "email", "you@example.com", "email")}
 

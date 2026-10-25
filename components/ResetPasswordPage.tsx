@@ -113,7 +113,7 @@ function ResetPasswordContent() {
       <p>At least 8 characters. Setting it signs out every other device on this account.</p>
       {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
 
-      <form className="auth-form auth-state-panel__form" onSubmit={handleSubmit} noValidate>
+      <form method="post" className="auth-form auth-state-panel__form" onSubmit={handleSubmit} noValidate>
         <div className="auth-field">
           <div className="auth-label-row"><label htmlFor="reset-password">New password</label></div>
           <div className="auth-password-field">

@@ -77,7 +77,7 @@ export function PortalPage({ slug }: { slug: string }) {
         {data.messages.length ? data.messages.map((m) => <li key={m.id} className={m.fromTeam ? "" : "thread__me"}><span className="src">{m.authorName}{m.fromTeam ? " · team" : ""} · {new Date(m.createdAt).toLocaleString()}</span><p>{m.comment}</p></li>)
           : <li className="app-muted">Questions, feedback or approvals — write to the team here.</li>}
       </ol>
-      <form className="pub__compose" onSubmit={send}>
+      <form method="post" className="pub__compose" onSubmit={send}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" maxLength={80} />
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message…" aria-label="Message" rows={3} maxLength={5000} />
         <button className="btn btn--primary" type="submit" disabled={sending || !text.trim()}>{sending ? "Sending…" : "Send →"}</button>

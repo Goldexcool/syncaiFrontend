@@ -152,7 +152,7 @@ function VerifyFailed({ reason, message }: { reason: "no-token" | "failed"; mess
           If an account exists for that address, a new link is on its way. It replaces any earlier one.
         </p>
       ) : (
-        <form className="auth-form auth-state-panel__form" onSubmit={handleResend} noValidate>
+        <form method="post" className="auth-form auth-state-panel__form" onSubmit={handleResend} noValidate>
           <div className="auth-field">
             <div className="auth-label-row"><label htmlFor="verify-resend-email">Email address</label></div>
             <input

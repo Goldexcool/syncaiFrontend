@@ -182,7 +182,7 @@ function QuickCreate({ onCreate }: { onCreate: (title: string) => Promise<void> 
     setTitle("");
   }
   return open
-    ? <form className="kb__create" onSubmit={submit}>
+    ? <form method="post" className="kb__create" onSubmit={submit}>
         <textarea autoFocus rows={2} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs to be done?" aria-label="New task title"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); } if (e.key === "Escape") setOpen(false); }} />
         <div><button className="dashboard-primary-button" type="submit">Create</button><button className="dashboard-text-button" type="button" onClick={() => setOpen(false)}>Cancel</button></div>
@@ -255,7 +255,7 @@ function TaskPanel({ id, board, members, onClose, onChanged, onMove, onError }: 
           <ol className="kb__comments">
             {comments.map((c) => <li key={c.id}><span className="kb__avatar kb__avatar--sm">{initials(c.user.fullName, c.user.email)}</span><div><span className="src">{c.user.fullName ?? c.user.email} · {new Date(c.createdAt).toLocaleString()}</span><p>{c.body}</p></div></li>)}
           </ol>
-          <form className="copy-row" onSubmit={async (e) => {
+          <form method="post" className="copy-row" onSubmit={async (e) => {
             e.preventDefault();
             if (!comment.trim()) return;
             try { const r = await addTaskComment(task.id, comment.trim()); setComments((all) => [...all, r.comment]); setComment(""); } catch (err) { onError(msg(err)); }

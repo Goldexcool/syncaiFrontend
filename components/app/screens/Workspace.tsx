@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/app/AppShell";
 import PortalPanel from "@/components/app/PortalPanel";
-import { ComposerPanel, SettingsView, type DashboardData } from "@/components/DashboardPage";
+import { ComposerPanel, SettingsView, type DashboardData } from "@/components/app/parts";
 import { EmptyState, Icon, SectionHeading, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
 import { confirmAiCommand, listPortals, runAiCommand, type AiResult } from "@/lib/api/app";
 import {

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
-import { NotificationPopover } from "@/components/DashboardPage";
+import { NotificationPopover } from "@/components/app/parts";
 import { Icon, displayName, initials, type IconName } from "@/components/app/kit";
 import { getUsageInfo, listMeetingsFull, type MeetingDetail, type UsageInfo } from "@/lib/api/app";
 import { getUnreadNotificationCount, listNotifications, listProjects, markAllNotificationsRead, markNotificationRead, type Notification, type Project } from "@/lib/api/dashboard";

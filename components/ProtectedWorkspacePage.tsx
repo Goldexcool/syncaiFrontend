@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
+import UnverifiedBanner from "@/components/UnverifiedBanner";
 import { ApiRequestError } from "@/lib/api/client";
-import { saveUsagePath, type UsagePath } from "@/lib/api/auth";
+import { renameWorkspace, saveUsagePath, type UsagePath } from "@/lib/api/auth";
 
 const usagePathOptions: Array<{ value: UsagePath; label: string; description: string }> = [
   {
@@ -31,77 +32,186 @@ function isUsagePath(value: string | null | undefined): value is UsagePath {
   return value === "meeting_notes" || value === "task_boards" || value === "both";
 }
 
-export default function ProtectedWorkspacePage({ kind }: { kind: "dashboard" | "onboarding" }) {
+function messageFor(error: unknown) {
+  return error instanceof ApiRequestError ? error.message : "Connection issue. Check your internet and try again.";
+}
+
+/**
+ * Onboarding runs in two steps because the account arrives with no workspace at
+ * all — registration creates only a user. Step one records a personalisation
+ * preference; step two is what actually calls the workspace endpoint, so the
+ * person naming the workspace is the one who owns it.
+ */
+function Onboarding() {
   const router = useRouter();
-  const { user, workspace, isLoading, logout, refreshUser } = useAuth();
-  const isOnboarding = kind === "onboarding";
+  const { user, workspace, createWorkspaceIfMissing, refreshUser } = useAuth();
+
+  const [step, setStep] = useState<"path" | "workspace">("path");
   const [selectedPath, setSelectedPath] = useState<UsagePath>("both");
-  const [isSavingPath, setIsSavingPath] = useState(false);
-  const [pathError, setPathError] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isOnboarding && isUsagePath(user?.usagePath)) setSelectedPath(user.usagePath);
-  }, [isOnboarding, user?.usagePath]);
+    if (isUsagePath(user?.usagePath)) setSelectedPath(user.usagePath);
+  }, [user?.usagePath]);
+
+  async function handlePathSubmit() {
+    setIsBusy(true);
+    setError("");
+    try {
+      await saveUsagePath(selectedPath);
+      // Creating the workspace here rather than on the next click means the
+      // default name is on screen to edit instead of an empty field.
+      const created = workspace ?? (await createWorkspaceIfMissing());
+      setWorkspaceName(created.name);
+      setStep("workspace");
+    } catch (requestError) {
+      setError(messageFor(requestError));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleWorkspaceSubmit() {
+    const name = workspaceName.trim();
+    if (!name) {
+      setError("Give your workspace a name.");
+      return;
+    }
+    if (name.length > 100) {
+      setError("Keep the name under 100 characters.");
+      return;
+    }
+
+    setIsBusy(true);
+    setError("");
+    try {
+      if (name !== workspace?.name) await renameWorkspace(name);
+      await refreshUser();
+      router.replace("/dashboard");
+    } catch (requestError) {
+      setError(messageFor(requestError));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <p className="eyebrow">{step === "path" ? "01 — A clear place to begin" : "02 — Name the space"}</p>
+      <h1>{step === "path" ? <>Start with a <em>conversation.</em></> : <>Somewhere to keep <em>all of it.</em></>}</h1>
+      <p>
+        {step === "path"
+          ? "Your account is ready. Tell VOII what to lead with and the workspace will open on the thing you actually came for."
+          : "Everything VOII files lands here. You can rename it any time from settings."}
+      </p>
+
+      {step === "path" ? (
+        <div className="workspace-onboarding">
+          <p className="workspace-onboarding__label">What should VOII help with first?</p>
+          <div className="workspace-onboarding__choices" role="radiogroup" aria-label="Choose your starting point">
+            {usagePathOptions.map((option) => {
+              const isSelected = option.value === selectedPath;
+              return (
+                <button
+                  className={`workspace-onboarding__choice${isSelected ? " is-selected" : ""}`}
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => { setSelectedPath(option.value); setError(""); }}
+                >
+                  <span className="workspace-onboarding__choice-copy"><strong>{option.label}</strong><span>{option.description}</span></span>
+                  <span className="workspace-onboarding__choice-mark" aria-hidden="true">{isSelected ? "✓" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+          {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
+          <button className="workspace-entry-page__continue" type="button" onClick={handlePathSubmit} disabled={isBusy} aria-busy={isBusy}>
+            {isBusy ? "Setting things up…" : "Continue"}<span aria-hidden="true">↗</span>
+          </button>
+        </div>
+      ) : (
+        <div className="workspace-onboarding">
+          <form
+            className="auth-form"
+            onSubmit={(event) => { event.preventDefault(); void handleWorkspaceSubmit(); }}
+            noValidate
+          >
+            <div className="auth-field">
+              <div className="auth-label-row"><label htmlFor="workspace-name">Workspace name</label></div>
+              <input
+                id="workspace-name"
+                name="workspaceName"
+                type="text"
+                value={workspaceName}
+                autoComplete="organization"
+                placeholder="Northstar launch"
+                maxLength={100}
+                aria-invalid={Boolean(error)}
+                onChange={(event) => { setWorkspaceName(event.target.value); setError(""); }}
+              />
+            </div>
+            {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
+            <button className="workspace-entry-page__continue" type="submit" disabled={isBusy} aria-busy={isBusy}>
+              {isBusy ? "Saving…" : "Open your workspace"}<span aria-hidden="true">↗</span>
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+function WorkspaceEntry() {
+  const { user, workspace } = useAuth();
+  return (
+    <>
+      <p className="eyebrow">Your VOII workspace</p>
+      <h1>Good to have you <em>back.</em></h1>
+      <p>Your conversations, decisions, and next moves stay close together here.</p>
+      <div className="workspace-entry-page__details">
+        <span>{user?.fullName || user?.email || "Your account"}</span>
+        {/* No workspace yet is a real state — onboarding is what creates one. */}
+        <span>{workspace?.name ?? "No workspace yet"}</span>
+        <span>{user?.email}</span>
+      </div>
+      <Link className="workspace-entry-page__link" href="/how-it-works">See how VOII works <span aria-hidden="true">↗</span></Link>
+    </>
+  );
+}
+
+export default function ProtectedWorkspacePage({ kind }: { kind: "dashboard" | "onboarding" }) {
+  const router = useRouter();
+  const { workspace, isInitialized, isLoading, logout } = useAuth();
+  const isOnboarding = kind === "onboarding";
+
+  // Nothing creates a workspace implicitly any more, so a signed-in user without
+  // one has not finished onboarding — send them there rather than rendering a
+  // workspace view with nothing behind it.
+  useEffect(() => {
+    if (!isOnboarding && isInitialized && !workspace) router.replace("/onboarding");
+  }, [isInitialized, isOnboarding, router, workspace]);
 
   async function handleLogout() {
     await logout();
     router.replace("/signin");
   }
 
-  async function handleUsagePathSubmit() {
-    setIsSavingPath(true);
-    setPathError("");
-    try {
-      await saveUsagePath(selectedPath);
-      await refreshUser();
-      router.replace("/dashboard");
-    } catch (error) {
-      setPathError(error instanceof ApiRequestError ? error.message : "Connection issue. Check your internet and try again.");
-    } finally {
-      setIsSavingPath(false);
-    }
-  }
-
   return (
     <AuthGate>
-      <main className="workspace-entry-page" id="main-content">
-        <header className="workspace-entry-page__header"><Link href="/" aria-label="VOII home"><Logo /></Link><button className="workspace-entry-page__logout" type="button" onClick={handleLogout} disabled={isLoading}>{isLoading ? "Signing out…" : "Sign out"}</button></header>
+      <main className="arc workspace-entry-page" id="main-content">
+        <header className="workspace-entry-page__header">
+          <Link href="/" aria-label="VOII home"><Logo /></Link>
+          <button className="workspace-entry-page__logout" type="button" onClick={handleLogout} disabled={isLoading}>
+            {isLoading ? "Signing out…" : "Sign out"}
+          </button>
+        </header>
+        <UnverifiedBanner />
         <section className="workspace-entry-page__content">
-          <p className="eyebrow">{isOnboarding ? "A clear place to begin" : "Your VOII workspace"}</p>
-          <h1>{isOnboarding ? <>Start with a <em>conversation.</em></> : <>Good to have you <em>back.</em></>}</h1>
-          <p>{isOnboarding ? "Your account is ready. The next conversation can become the first useful shape of your workspace." : "Your conversations, decisions, and next moves stay close together here."}</p>
-          {isOnboarding ? (
-            <div className="workspace-onboarding">
-              <p className="workspace-onboarding__label">What should VOII help with first?</p>
-              <div className="workspace-onboarding__choices" role="radiogroup" aria-label="Choose your starting point">
-                {usagePathOptions.map((option) => {
-                  const isSelected = option.value === selectedPath;
-                  return (
-                    <button
-                      className={`workspace-onboarding__choice${isSelected ? " is-selected" : ""}`}
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => { setSelectedPath(option.value); setPathError(""); }}
-                    >
-                      <span className="workspace-onboarding__choice-copy"><strong>{option.label}</strong><span>{option.description}</span></span>
-                      <span className="workspace-onboarding__choice-mark" aria-hidden="true">{isSelected ? "✓" : ""}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {pathError ? <p className="auth-form__alert" role="alert">{pathError}</p> : null}
-              <button className="workspace-entry-page__continue" type="button" onClick={handleUsagePathSubmit} disabled={isSavingPath} aria-busy={isSavingPath}>
-                {isSavingPath ? "Saving your starting point…" : "Continue to your workspace"}<span aria-hidden="true">↗</span>
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="workspace-entry-page__details"><span>{user?.fullName || user?.email || "Your account"}</span><span>{workspace?.name || "Personal workspace"}</span><span>{user?.email}</span></div>
-              <Link className="workspace-entry-page__link" href="/how-it-works">See how VOII works <span aria-hidden="true">↗</span></Link>
-            </>
-          )}
+          {isOnboarding ? <Onboarding /> : <WorkspaceEntry />}
         </section>
       </main>
     </AuthGate>

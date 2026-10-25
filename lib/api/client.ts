@@ -9,21 +9,18 @@ export const API_ERROR_CODES = {
   TOKEN_EXPIRED: "TOKEN_EXPIRED",
   INVALID_TOKEN: "INVALID_TOKEN",
   AUTH_REQUIRED: "AUTH_REQUIRED",
+  REFRESH_TOKEN_MISSING: "REFRESH_TOKEN_MISSING",
+  REFRESH_TOKEN_INVALID: "REFRESH_TOKEN_INVALID",
   USER_NOT_FOUND: "USER_NOT_FOUND",
   ACCOUNT_SUSPENDED: "ACCOUNT_SUSPENDED",
   ACCOUNT_DEACTIVATED: "ACCOUNT_DEACTIVATED",
   VALIDATION: "VALIDATION_ERROR",
   RATE_LIMIT: "RATE_LIMIT_EXCEEDED",
   PLAN_LIMIT: "PLAN_LIMIT_EXCEEDED",
+  VERIFICATION_TOKEN_INVALID: "VERIFICATION_TOKEN_INVALID",
+  EMAIL_ALREADY_VERIFIED: "EMAIL_ALREADY_VERIFIED",
+  RESET_TOKEN_INVALID: "RESET_TOKEN_INVALID",
 } as const;
-
-/** 401 codes that mean the token is dead and refreshing it will not help. */
-const UNRECOVERABLE_AUTH_CODES: string[] = [
-  API_ERROR_CODES.INVALID_TOKEN,
-  API_ERROR_CODES.USER_NOT_FOUND,
-  API_ERROR_CODES.ACCOUNT_SUSPENDED,
-  API_ERROR_CODES.ACCOUNT_DEACTIVATED,
-];
 
 export class ApiRequestError extends Error {
   readonly status?: number;
@@ -325,11 +322,18 @@ export async function refreshAccessToken() {
   return token;
 }
 
-/** A 401 is worth refreshing unless the API told us the token is unusable. */
+/**
+ * TOKEN_EXPIRED is the only 401 that a refresh can fix. Treating any other one
+ * as refreshable is what produces the infinite refresh loop: REFRESH_TOKEN_INVALID
+ * would trigger a refresh, which fails the same way, forever.
+ *
+ * A 401 carrying no code at all is the one ambiguous case — an edge or proxy can
+ * strip the body. We refresh once there rather than sign the user out on a blank
+ * response; the retry either succeeds or fails with a code we can read.
+ */
 function shouldRefreshForError(error: ApiRequestError) {
   if (error.status !== 401) return false;
-  if (error.code && UNRECOVERABLE_AUTH_CODES.includes(error.code)) return false;
-  return true;
+  return error.code === API_ERROR_CODES.TOKEN_EXPIRED || error.code === undefined;
 }
 
 export async function request<T>(path: string, init: RequestInit = {}, options: RequestOptions = {}): Promise<T> {

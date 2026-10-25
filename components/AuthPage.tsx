@@ -2,38 +2,56 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
+import AuthStage, { type StageIdentity } from "@/components/arc/AuthStage";
+import { Squish } from "@/components/arc/motion";
 import { forgotPassword, loginUser, registerUser } from "@/lib/api/auth";
 import { ApiRequestError } from "@/lib/api/client";
 
-export type AuthMode = "login" | "signup" | "forgot-password";
-type FormField = "fullName" | "workspaceName" | "email" | "password";
+export type AuthMode = "login" | "signup" | "forgot-password" | "reset-password";
+type FormField = "fullName" | "email" | "password";
 type FormState = Record<FormField, string>;
 
-const authContent: Record<AuthMode, { kicker: string; title: ReactNode; description: string; submit: string }> = {
+/**
+ * Auth in the arc language: the form on the page ground, the product itself
+ * building on the panel beside it. Each route owns one of the three canvas
+ * colours so the threshold is legible before a word is read — blue to come
+ * back, yellow to begin, magenta to recover.
+ */
+const authContent: Record<AuthMode, { step: string; kicker: string; title: ReactNode; description: string; submit: string }> = {
   login: {
-    kicker: "Welcome back",
-    title: <>Keep the thread <em>moving.</em></>,
-    description: "Sign in to find your recordings, summaries, decisions, and tasks.",
+    step: "01",
+    kicker: "Sign in",
+    title: <>Pick the thread back <em>up.</em></>,
+    description: "Your recordings, decisions, tasks and follow-ups are where you left them.",
     submit: "Sign in to VOII",
   },
   signup: {
-    kicker: "Start with a conversation",
-    title: <>Make space for the work <em>ahead.</em></>,
-    description: "Create an account to record conversations, search transcripts, and turn decisions into tasks.",
+    step: "01",
+    kicker: "Create account",
+    title: <>Start with one <em>conversation.</em></>,
+    description: "Record it once. VOII returns the decisions, the owners and the dates — sourced, and linked back to the words.",
     submit: "Create your account",
   },
   "forgot-password": {
-    kicker: "Find your way back",
+    step: "01",
+    kicker: "Recover access",
     title: <>Your work is still <em>here.</em></>,
-    description: "Enter your email and we’ll send you a quiet way back into VOII.",
-    submit: "Send reset link",
+    description: "Enter your email and we’ll send a link back into VOII. It stays good for an hour.",
+    submit: "Email me a reset link",
+  },
+  "reset-password": {
+    step: "02",
+    kicker: "Reset password",
+    title: <>Choose a new <em>password.</em></>,
+    description: "Pick something you’ll keep. Setting it signs out every other device.",
+    submit: "Update password",
   },
 };
 
-const initialForm: FormState = { fullName: "", workspaceName: "", email: "", password: "" };
+const initialForm: FormState = { fullName: "", email: "", password: "" };
 
 function getSafeReturnPath() {
   if (typeof window === "undefined") return "/dashboard";
@@ -50,42 +68,106 @@ function validateForm(mode: AuthMode, form: FormState) {
   if (!email) errors.email = "Enter your email address.";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
   if (mode !== "forgot-password" && form.password.length < 8) errors.password = "Use at least 8 characters.";
-  if (mode === "signup" && form.workspaceName.trim().length > 100) errors.workspaceName = "Keep your workspace name under 100 characters.";
-
   return errors;
 }
 
-function AuthAside({ mode }: { mode: AuthMode }) {
-  return (
-    <aside className="auth-page__aside">
-      <Link className="auth-page__logo" href="/" aria-label="VOII home"><Logo /></Link>
-      <div className="auth-page__aside-copy">
-        <p className="eyebrow">The work after the words</p>
-        <p className="auth-page__aside-heading">{mode === "forgot-password" ? <>Nothing important is <em>lost.</em></> : <>The conversation becomes <em>work.</em></>}</p>
-        <p>VOII turns conversations into searchable summaries, decisions, and tasks.</p>
-      </div>
-      <div className="auth-page__aside-footer"><span>Conversation · Knowledge · Tasks · Momentum</span><span>01 — 04</span></div>
-    </aside>
-  );
+/** Three filled bars, in the three canvas colours. Length carries most of the
+ *  weight because it is the only rule the backend actually enforces. */
+function strengthOf(password: string) {
+  if (!password) return { score: 0, label: "" };
+  let score = password.length >= 8 ? 1 : 0;
+  if (password.length >= 12) score += 1;
+  if (/[^A-Za-z0-9]/.test(password) || (/[A-Z]/.test(password) && /[0-9]/.test(password))) score += 1;
+  return { score, label: ["Too short", "Workable", "Good", "Strong"][score] };
 }
 
-export function AuthPageShell({ mode, children, className = "" }: { mode: AuthMode; children: ReactNode; className?: string }) {
+export function AuthPageShell({
+  mode,
+  children,
+  className = "",
+  identity,
+}: {
+  mode: AuthMode;
+  children: ReactNode;
+  className?: string;
+  /** What the panel echoes back while the form is being filled. */
+  identity?: StageIdentity;
+}) {
   return (
-    <main className={`auth-page auth-page--${mode} ${className}`.trim()} id="main-content">
-      <AuthAside mode={mode} />
-      <section className="auth-page__main">
-        <div className="auth-page__mobile-logo"><Link href="/" aria-label="VOII home"><Logo /></Link></div>
-        {children}
+    <main className={`arc av av--${mode} ${className}`.trim()} id="main-content">
+      <section className="av__col">
+        <header className="av__top">
+          <Link className="av__logo" href="/" aria-label="VOII home"><Logo /></Link>
+          <Link className="av__back" href="/"><span aria-hidden="true">←</span> Back to voii.com</Link>
+        </header>
+
+        <div className="av__body">{children}</div>
+
+        <footer className="av__base">
+          <span>Conversation · Knowledge · Tasks · Momentum</span>
+          <span className="av__legal">
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+          </span>
+        </footer>
       </section>
+
+      <aside className="av__aside">
+        <AuthStage identity={identity} mode={mode} />
+      </aside>
     </main>
   );
 }
 
 export function AuthStatePanel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`auth-state-panel ${className}`.trim()}>{children}</div>;
+  return <div className={`auth-state-panel av-panel ${className}`.trim()}>{children}</div>;
 }
 
-function AuthForm({ mode }: { mode: AuthMode }) {
+/** The heading block every auth route shares, so a code-entry screen and the
+ *  sign-in screen sit at the same optical height. */
+export function AuthHeading({ mode }: { mode: AuthMode }) {
+  const copy = authContent[mode];
+  return (
+    <div className="auth-form-heading av-head">
+      <p className="eyebrow av-step"><b>{copy.step}</b>{copy.kicker}</p>
+      <h1>{copy.title}</h1>
+      <p>{copy.description}</p>
+    </div>
+  );
+}
+
+/**
+ * Shown after /auth/forgot-password. The endpoint returns the same 200 and the
+ * same message whether or not the account exists, so this copy is careful to
+ * describe what we asked for, never what was delivered.
+ */
+function ResetLinkSent({ email, onResend }: { email: string; onResend: () => void }) {
+  return (
+    <div className="auth-state-panel av-panel">
+      <span className="auth-success__mark" aria-hidden="true">✓</span>
+      <p className="eyebrow">Check your inbox</p>
+      <h1>A way back is <em>on its way.</em></h1>
+      <p>
+        If an account exists for <strong>{email}</strong>, we’ve sent it a reset link.
+        It works once and expires in an hour.
+      </p>
+      <p className="av-note">
+        Nothing in your inbox after a few minutes? Check spam, then request another —
+        each new link cancels the one before it.
+      </p>
+      <div className="av-actions">
+        <button className="auth-secondary-link" onClick={onResend} type="button">
+          Use a different address <span aria-hidden="true">↗</span>
+        </button>
+        <Link className="auth-secondary-link" href="/signin">
+          Back to sign in <span aria-hidden="true">↗</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function AuthForm({ mode, onIdentity }: { mode: AuthMode; onIdentity?: (identity: StageIdentity) => void }) {
   const copy = authContent[mode];
   const router = useRouter();
   const { setAuth } = useAuth();
@@ -95,6 +177,8 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+  const [sentTo, setSentTo] = useState("");
+  const strength = useMemo(() => strengthOf(form.password), [form.password]);
 
   useEffect(() => {
     if (rateLimitSeconds <= 0) return;
@@ -104,6 +188,9 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 
   function updateField(field: FormField, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+    // Outside the updater: React may run an updater during render, and calling
+    // the parent's setter from there is a set-state-in-render violation.
+    if (field === "fullName") onIdentity?.({ name: value });
     setFieldErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -130,19 +217,24 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       if (mode === "login") {
         const data = await loginUser({ email: form.email.trim(), password: form.password });
         setAuth(data);
-        router.push(data.user.emailVerified === false ? `/check-email?email=${encodeURIComponent(data.user.email)}` : getSafeReturnPath());
+        // A workspace may not exist yet — onboarding is what creates it.
+        router.push(data.workspace ? getSafeReturnPath() : "/onboarding");
       } else if (mode === "signup") {
         const data = await registerUser({
           fullName: form.fullName.trim(),
           email: form.email.trim(),
           password: form.password,
-          ...(form.workspaceName.trim() ? { workspaceName: form.workspaceName.trim() } : {}),
         });
         setAuth(data);
-        router.push(`/check-email?email=${encodeURIComponent(data.user.email)}`);
+        // Registration signs the user in even though the address is unverified,
+        // and nothing server-side gates on verification — so they go straight to
+        // onboarding and are nudged about the email by a banner, not a wall.
+        router.push("/onboarding");
       } else {
         await forgotPassword(form.email.trim());
-        router.push(`/check-email?email=${encodeURIComponent(form.email.trim())}&reason=reset`);
+        // The API answers identically whether or not the address is registered,
+        // so the confirmation must never claim the mail definitely went out.
+        setSentTo(form.email.trim());
       }
     } catch (error) {
       if (error instanceof ApiRequestError) {
@@ -163,9 +255,12 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 
   const fieldId = (field: FormField) => `auth-${field}`;
   const errorId = (field: FormField) => `${fieldId(field)}-error`;
-  const renderField = (field: FormField, label: string, type: string, placeholder: string, autoComplete: string) => (
+  const renderField = (field: FormField, label: string, type: string, placeholder: string, autoComplete: string, hint?: string) => (
     <div className="auth-field" key={field}>
-      <label htmlFor={fieldId(field)}>{label}</label>
+      <div className="auth-label-row">
+        <label htmlFor={fieldId(field)}>{label}</label>
+        {hint ? <span className="auth-field__hint">{hint}</span> : null}
+      </div>
       <input
         id={fieldId(field)}
         name={field}
@@ -181,18 +276,25 @@ function AuthForm({ mode }: { mode: AuthMode }) {
     </div>
   );
 
+  if (sentTo) return <ResetLinkSent email={sentTo} onResend={() => setSentTo("")} />;
+
   return (
-    <div className="auth-form-shell">
-      <div className="auth-form-heading"><p className="eyebrow">{copy.kicker}</p><h1>{copy.title}</h1><p>{copy.description}</p></div>
+    <div className="auth-form-shell av-panel">
+      <AuthHeading mode={mode} />
+
       {formError ? <p className="auth-form__alert" role="alert">{formError}</p> : null}
       {rateLimitSeconds > 0 ? <p className="auth-form__status" role="status">Try again in {rateLimitSeconds}s.</p> : null}
+
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         {mode === "signup" ? renderField("fullName", "Full name", "text", "Your name", "name") : null}
-        {mode === "signup" ? renderField("workspaceName", "Workspace name", "text", "Optional", "organization") : null}
         {renderField("email", "Email address", "email", "you@example.com", "email")}
+
         {mode !== "forgot-password" ? (
           <div className="auth-field auth-field--password">
-            <div className="auth-label-row"><label htmlFor={fieldId("password")}>Password</label>{mode === "login" ? <Link href="/forgot-password">Forgot password?</Link> : null}</div>
+            <div className="auth-label-row">
+              <label htmlFor={fieldId("password")}>Password</label>
+              {mode === "login" ? <Link href="/forgot-password">Forgot password?</Link> : null}
+            </div>
             <div className="auth-password-field">
               <input
                 id={fieldId("password")}
@@ -207,13 +309,23 @@ function AuthForm({ mode }: { mode: AuthMode }) {
               />
               <button className="auth-password-toggle" type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button>
             </div>
+            {mode === "signup" && form.password ? (
+              <p className="av-meter" data-score={strength.score}>
+                <i /><i /><i />
+                <span>{strength.label}</span>
+              </p>
+            ) : null}
             {fieldErrors.password ? <p className="auth-field__error" id={errorId("password")}>{fieldErrors.password}</p> : null}
           </div>
         ) : null}
-        <button className="auth-submit" type="submit" disabled={isSubmitting || rateLimitSeconds > 0} aria-busy={isSubmitting}>
-          <span>{isSubmitting ? "Working…" : copy.submit}</span><span aria-hidden="true">↗</span>
-        </button>
+
+        <Squish className="av-go">
+          <button className="auth-submit" type="submit" disabled={isSubmitting || rateLimitSeconds > 0} aria-busy={isSubmitting}>
+            <span>{isSubmitting ? "Working…" : copy.submit}</span><span aria-hidden="true">↗</span>
+          </button>
+        </Squish>
       </form>
+
       <div className="auth-form-footer">
         {mode === "login" ? <p>New to VOII? <Link href="/signup">Create an account</Link></p> : mode === "signup" ? <p>Already have an account? <Link href="/signin">Sign in</Link></p> : <p>Remembered your password? <Link href="/signin">Sign in</Link></p>}
         <span>By continuing, you agree to VOII&apos;s <Link href="/terms">terms</Link> and <Link href="/privacy">privacy policy</Link>.</span>
@@ -223,5 +335,10 @@ function AuthForm({ mode }: { mode: AuthMode }) {
 }
 
 export default function AuthPage({ mode }: { mode: AuthMode }) {
-  return <AuthPageShell mode={mode}><AuthForm mode={mode} /></AuthPageShell>;
+  const [identity, setIdentity] = useState<StageIdentity>({});
+  return (
+    <AuthPageShell identity={identity} mode={mode}>
+      <AuthForm mode={mode} onIdentity={setIdentity} />
+    </AuthPageShell>
+  );
 }

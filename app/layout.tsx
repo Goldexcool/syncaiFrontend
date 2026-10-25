@@ -1,33 +1,69 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Libre_Caslon_Text } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const ibmPlexSans = IBM_Plex_Sans({
+/** One family, carrying display and text on its optical-size axis. */
+const bricolage = Bricolage_Grotesque({
   display: "swap",
   subsets: ["latin"],
-  variable: "--font-ibm-plex-sans",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-bricolage",
 });
 
-const libreCaslonText = Libre_Caslon_Text({
-  display: "swap",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  variable: "--font-libre-caslon-text",
-  weight: ["400", "700"],
-});
+const TITLE = "VOII — You had the conversation. VOII remembers what matters.";
+const DESCRIPTION =
+  "VOII turns your conversations into organised notes, tasks, knowledge and follow-ups — so you can focus on what comes next.";
 
 export const metadata: Metadata = {
-  title: "VOII — The conversation becomes work",
-  description:
-    "A calm workspace for turning conversations into knowledge, tasks, and momentum.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s" },
+  description: DESCRIPTION,
+  applicationName: "VOII",
+  openGraph: {
+    type: "website",
+    siteName: "VOII",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    locale: "en_NG",
+  },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  alternates: { canonical: "/" },
 };
+
+/** Factual only: name, URL, description and the real free tier. No ratings,
+ *  no customer counts — none exist. */
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "VOII",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description: DESCRIPTION,
+  url: SITE_URL,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "NGN", description: "Free plan" },
+};
+
+/**
+ * Applied before first paint so a stored theme never flashes the wrong one.
+ * No stored value means the OS setting wins, which is the default state.
+ */
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("voii-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${ibmPlexSans.variable} ${libreCaslonText.variable}`}><AuthProvider>{children}</AuthProvider></body>
+    <html className={bricolage.variable} lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
+      </head>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

@@ -324,7 +324,7 @@ export default function DashboardPage() {
   const visibleMeetings = useMemo(() => data.meetings.filter((meeting) => !search || meeting.title.toLowerCase().includes(search.toLowerCase()) || meeting.shortSummary?.toLowerCase().includes(search.toLowerCase())), [data.meetings, search]);
 
   return <AuthGate>
-    <div className="dashboard-page" id="main-content">
+    <div className="arc dashboard-page" id="main-content">
       <div className={`dashboard-shell ${mobileNavOpen ? "dashboard-shell--nav-open" : ""}`}>
         <aside className="dashboard-sidebar" aria-label="Workspace navigation">
           <div className="dashboard-sidebar__top">

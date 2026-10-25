@@ -1,165 +1,203 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
-import { ArrowLink, ObjectBadge, PageKicker, ProgressDots } from "@/components/MarketingPrimitives";
+import Link from "next/link";
+import { SiteHeader } from "@/components/SiteHeader";
+import ArcFooter from "@/components/arc/Footer";
+import { Magnetic, Reveal, Squish } from "@/components/arc/motion";
+import { calendarEvent, conversation, initialTasks, knowledgeEntries, project } from "@/lib/story";
 
-const flowSteps = [
+/* ── Stage panels, built from the real Northstar kickoff ─────────── */
+
+function ConversationPanel() {
+  return (
+    <div className="hw-panel">
+      <header className="hw-panel__bar">
+        <span className="hw-panel__title">{conversation.title}</span>
+        <span className="hw-panel__meta">{conversation.duration} · {conversation.participants.length} people</span>
+      </header>
+      <ul className="hw-lines">
+        {conversation.lines.map((l) => (
+          <li className={l.tone !== "neutral" ? "is-marked" : ""} key={l.id}>
+            <i>{l.initials}</i>
+            <span className="hw-t">{l.time}</span>
+            <span className="hw-say">{l.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function KnowledgePanel() {
+  const k = knowledgeEntries[0];
+  const line = conversation.lines.find((l) => l.id === k.sourceLineId)!;
+  return (
+    <div className="hw-panel">
+      <header className="hw-panel__bar">
+        <span className="hw-panel__title">Knowledge</span>
+        <span className="hw-panel__meta">linked to 1 source</span>
+      </header>
+      <div className="hw-card is-lit">
+        <span className="hw-kind">Entry</span>
+        <strong>{k.title}</strong>
+        <span className="hw-body">{k.body}</span>
+      </div>
+      <span className="hw-tether" aria-hidden="true" />
+      <div className="hw-card">
+        <span className="hw-kind">Source · {line.time}</span>
+        <strong>“{line.text}”</strong>
+        <span className="hw-body">{line.speaker}</span>
+      </div>
+    </div>
+  );
+}
+
+function TasksPanel() {
+  return (
+    <div className="hw-panel">
+      <header className="hw-panel__bar">
+        <span className="hw-panel__title">Tasks</span>
+        <span className="hw-panel__meta">{initialTasks.length} open · 0 typed</span>
+      </header>
+      <ul className="hw-tasks">
+        {initialTasks.map((t) => (
+          <li key={t.id}>
+            <span className="hw-box" aria-hidden="true" />
+            <span className="hw-task">{t.title}</span>
+            <i>{t.ownerInitials}</i>
+            <span className="hw-due">{t.due}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function MomentumPanel() {
+  return (
+    <div className="hw-panel">
+      <header className="hw-panel__bar">
+        <span className="hw-panel__title">{project.name}</span>
+        <span className="hw-panel__meta">4 objects · 3 links</span>
+      </header>
+      <div className="hw-map">
+        <svg viewBox="0 0 300 190" aria-hidden="true">
+          <path d="M 60 38 C 148 38, 148 95, 236 95" />
+          <path d="M 60 38 C 148 38, 148 152, 236 152" />
+          <path d="M 60 95 C 138 95, 158 152, 236 152" />
+        </svg>
+        <span className="hw-node hw-node--a">Conversation</span>
+        <span className="hw-node hw-node--b">Knowledge</span>
+        <span className="hw-node hw-node--c">Tasks</span>
+        <span className="hw-node hw-node--d">Calendar</span>
+      </div>
+      <div className="hw-card">
+        <span className="hw-kind">Next</span>
+        <strong>{calendarEvent.title}</strong>
+        <span className="hw-body">{calendarEvent.date} · {calendarEvent.time}</span>
+      </div>
+    </div>
+  );
+}
+
+const STAGES = [
   {
-    id: "conversation",
-    number: "01",
-    label: "Conversation",
+    id: "conversation", n: "01", label: "Conversation", tint: "var(--c-blue)",
     title: "Start with what was said.",
     copy: "VOII saves the speakers, timestamps, and transcript together, so every decision has a clear source.",
+    Panel: ConversationPanel,
   },
   {
-    id: "knowledge",
-    number: "02",
-    label: "Knowledge",
+    id: "knowledge", n: "02", label: "Knowledge", tint: "var(--c-yellow)",
     title: "Keep what matters.",
     copy: "A decision becomes a searchable Knowledge entry, still linked to the conversation that produced it.",
+    Panel: KnowledgePanel,
   },
   {
-    id: "task",
-    number: "03",
-    label: "Tasks",
+    id: "tasks", n: "03", label: "Tasks", tint: "var(--c-magenta)",
     title: "Make the next move visible.",
     copy: "Commitments become tasks with clear owners and due dates, so the next move is visible to everyone involved.",
+    Panel: TasksPanel,
   },
   {
-    id: "momentum",
-    number: "04",
-    label: "Momentum",
+    id: "momentum", n: "04", label: "Momentum", tint: "var(--c-blue)",
     title: "Let the work keep moving.",
     copy: "The project connects the source conversation, Knowledge, Tasks, and calendar event in one workspace.",
+    Panel: MomentumPanel,
   },
-] as const;
+];
 
-function ConversationMini() {
-  return (
-    <div className="flow-object flow-object--conversation">
-      <div className="flow-object__topline">
-        <ObjectBadge type="conversation">C</ObjectBadge>
-        <div><span className="product-label">Conversation</span><strong>Client kickoff</strong></div>
-        <span className="flow-object__dot" />
-      </div>
-      <div className="flow-transcript-line flow-transcript-line--strong">Let’s keep the launch focused on the product story.</div>
-      <div className="flow-transcript-line">Maya will send the final brand assets today.</div>
-      <div className="flow-transcript-line">We’ll review the first draft on Thursday.</div>
-      <div className="flow-object__meta">Maya · Sam · Jordan <span>34 min</span></div>
-    </div>
-  );
-}
-
-function KnowledgeMini() {
-  return (
-    <div className="flow-object flow-object--knowledge">
-      <div className="flow-object__topline">
-        <ObjectBadge type="knowledge">K</ObjectBadge>
-        <div><span className="product-label">Knowledge</span><strong>Northstar launch direction</strong></div>
-      </div>
-      <p>Keep the launch focused on the product story.</p>
-      <div className="flow-object__meta"><span>↗ Client kickoff</span><span>Just now</span></div>
-    </div>
-  );
-}
-
-function TaskMini() {
-  return (
-    <div className="flow-object flow-object--task">
-      <div className="flow-object__topline">
-        <ObjectBadge type="task">T</ObjectBadge>
-        <div><span className="product-label">Next steps</span><strong>Northstar launch</strong></div>
-        <span className="flow-object__count">3</span>
-      </div>
-      <div className="mini-task-row"><span />Send final brand assets <small>Maya · Today</small></div>
-      <div className="mini-task-row"><span />Prepare first launch draft <small>Sam · Friday</small></div>
-      <div className="mini-task-row"><span />Review first draft <small>Jordan · Thursday</small></div>
-    </div>
-  );
-}
-
-function MomentumMini() {
-  return (
-    <div className="flow-object flow-object--momentum">
-      <div className="momentum-mini-map">
-        <div className="momentum-mini-node momentum-mini-node--conversation"><ObjectBadge type="conversation">C</ObjectBadge><span>Client kickoff</span></div>
-        <div className="momentum-mini-node momentum-mini-node--knowledge"><ObjectBadge type="knowledge">K</ObjectBadge><span>Direction</span></div>
-        <div className="momentum-mini-node momentum-mini-node--task"><ObjectBadge type="task">T</ObjectBadge><span>3 tasks</span></div>
-        <div className="momentum-mini-node momentum-mini-node--project"><ObjectBadge type="project">N</ObjectBadge><span>Northstar launch</span></div>
-        <span className="momentum-mini-line momentum-mini-line--one" /><span className="momentum-mini-line momentum-mini-line--two" /><span className="momentum-mini-line momentum-mini-line--three" />
-      </div>
-      <div className="flow-object__meta"><span>Everything stays connected</span><span>Progress follows the work</span></div>
-    </div>
-  );
-}
-
-function FlowObject({ activeStep }: { activeStep: number }) {
-  const step = flowSteps[activeStep];
-  return (
-    <div className="flow-object-stage" data-flow-step={step.id}>
-      <AnimatePresence mode="wait">
-        <motion.div className="flow-object-stage__inner" key={step.id} initial={{ opacity: 0, y: 26, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 1.02 }} transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}>
-          {activeStep === 0 ? <ConversationMini /> : null}
-          {activeStep === 1 ? <KnowledgeMini /> : null}
-          {activeStep === 2 ? <TaskMini /> : null}
-          {activeStep === 3 ? <MomentumMini /> : null}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
+const PROOF = [
+  { title: "Source, not noise.", copy: "Open any decision or task and return to the exact sentence, person, and moment it came from." },
+  { title: "Context, not clutter.", copy: "Keep a concise decision searchable without losing the conversation that explains it." },
+  { title: "Action, not ambiguity.", copy: "Owners and due dates turn a good conversation into work someone can act on." },
+];
 
 export default function HowItWorksPage() {
-  const [activeStep, setActiveStep] = useState(0);
-
   return (
-    <main className="marketing-page how-page bg-cream text-ink" id="main-content">
+    <main className="arc hw" id="main-content">
       <SiteHeader />
-      <section className="marketing-hero marketing-hero--how">
-        <div className="marketing-hero__ambient" aria-hidden="true" />
-        <div className="marketing-hero__meta"><span>VOII / HOW IT WORKS</span><span>01 — 04</span></div>
-        <div className="marketing-hero__content">
-          <PageKicker>The work after the words</PageKicker>
-          <h1>A conversation has an <em>afterlife.</em></h1>
-          <p>VOII turns a meeting, lecture, or client call into a searchable transcript, clear decisions, and tasks with owners and dates.</p>
-          <ArrowLink href="#flow">See the thread unfold</ArrowLink>
-        </div>
-        <div className="marketing-hero__edge"><span>Conversation</span><span>Knowledge</span><span>Tasks</span><span>Momentum</span></div>
-      </section>
 
-      <section className="flow-section" id="flow" aria-labelledby="flow-title">
-        <div className="flow-section__intro">
-          <PageKicker>One conversation / four useful forms</PageKicker>
-          <h2 id="flow-title">Nothing important has to disappear between the call and the work.</h2>
-          <p>Select a stage to see the transcript become a decision, a task, and connected project progress.</p>
-          <ProgressDots count={flowSteps.length} active={activeStep} />
-          <div className="flow-step-list" role="tablist" aria-label="VOII flow steps">
-            {flowSteps.map((item, index) => (
-              <button className={activeStep === index ? "is-active" : ""} key={item.id} type="button" role="tab" aria-selected={activeStep === index} onClick={() => setActiveStep(index)}>
-                <span>{item.number}</span><span>{item.label}</span><i aria-hidden="true">↗</i>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flow-section__stage">
-          <FlowObject activeStep={activeStep} />
-          <div className="flow-section__stage-caption"><span>{flowSteps[activeStep].number} / {flowSteps[activeStep].label}</span><span>{flowSteps[activeStep].title}</span></div>
+      <section className="hw-hero" aria-labelledby="hw-title">
+        <p className="arc-kicker">How it works</p>
+        <h1 className="arc-in" id="hw-title">A conversation has an <em>afterlife.</em></h1>
+        <p className="hw-hero__lede arc-in" style={{ "--d": "70ms" } as React.CSSProperties}>
+          VOII turns a meeting, lecture, or client call into a searchable transcript, clear
+          decisions, and tasks with owners and dates.
+        </p>
+        <div className="arc-actions arc-in" style={{ "--d": "140ms" } as React.CSSProperties}>
+          <Magnetic><Squish>
+            <Link className="arc-btn arc-btn--go" href="/signup">
+              Start with a conversation <span aria-hidden="true">↗</span>
+            </Link>
+          </Squish></Magnetic>
+          <Link className="arc-btn arc-btn--quiet" href="/pricing">See pricing</Link>
         </div>
       </section>
 
-      <section className="how-proof-section">
-        <div className="how-proof-section__heading"><PageKicker>Designed around the real objects of work</PageKicker><h2>Find the source behind every decision and task.</h2></div>
-        <div className="how-proof-grid">
-          <article><ObjectBadge type="conversation">C</ObjectBadge><h3>Source, not noise.</h3><p>Open any decision or task and return to the exact sentence, person, and moment it came from.</p></article>
-          <article><ObjectBadge type="knowledge">K</ObjectBadge><h3>Context, not clutter.</h3><p>Keep a concise decision searchable without losing the conversation that explains it.</p></article>
-          <article><ObjectBadge type="task">T</ObjectBadge><h3>Action, not ambiguity.</h3><p>Owners and due dates turn a good conversation into work someone can act on.</p></article>
+      {/* One spine, four stages, alternating sides. */}
+      <section className="hw-flow" aria-labelledby="hw-flow-title">
+        <Reveal className="hw-flow__head">
+          <p className="arc-kicker">The thread</p>
+          <h2 id="hw-flow-title">Nothing important has to disappear between the call and the work.</h2>
+        </Reveal>
+
+        <ol className="hw-stages">
+          {STAGES.map(({ id, n, label, tint, title, copy, Panel }, i) => (
+            <li className={`hw-stage ${i % 2 ? "is-flip" : ""}`} key={id} style={{ "--tint": tint } as React.CSSProperties}>
+              <span className="hw-stage__spine" aria-hidden="true"><i /></span>
+
+              <Reveal className="hw-stage__copy">
+                <span className="hw-stage__n">{n}</span>
+                <span className="hw-stage__label">{label}</span>
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </Reveal>
+
+              <Reveal className="hw-stage__viz" delay={0.06}>
+                <Panel />
+              </Reveal>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="hw-proof" aria-labelledby="hw-proof-title">
+        <Reveal>
+          <p className="arc-kicker">Why it holds</p>
+          <h2 id="hw-proof-title">Find the source behind every decision and task.</h2>
+        </Reveal>
+        <div className="hw-proof__grid">
+          {PROOF.map((p, i) => (
+            <Reveal className="hw-proof__card" delay={i * 0.05} key={p.title}>
+              <h3>{p.title}</h3>
+              <p>{p.copy}</p>
+            </Reveal>
+          ))}
         </div>
       </section>
 
-      <section className="dark-cta-band"><PageKicker>See what VOII does for your work</PageKicker><h2>Start with a conversation.</h2><ArrowLink href="/signup" inverse>Start with VOII</ArrowLink></section>
-      <SiteFooter />
+      <ArcFooter />
     </main>
   );
 }

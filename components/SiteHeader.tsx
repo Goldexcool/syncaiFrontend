@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "@/components/arc/motion";
 
 const primaryLinks = [
   { href: "/how-it-works", label: "How it works" },
@@ -63,6 +64,7 @@ export function SiteHeader() {
         ))}
       </nav>
       <div className="site-header__actions">
+        <ThemeToggle />
         <Link className="site-header__signin" href="/signin" aria-current={pathname === "/signin" || pathname === "/login" ? "page" : undefined}>Sign in</Link>
         <Link className="button button--header" href="/signup">
           <span className="button--header__label button--header__label--desktop">Start with a conversation</span>

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { clearAccessToken, getAccessToken, setAccessToken, setSessionExpiredHandler } from "@/lib/api/client";
-import { getCurrentUser, getCurrentWorkspace, logoutUser, refreshSession, type AuthData, type User, type Workspace } from "@/lib/api/auth";
+import { ensureWorkspace, getCurrentUser, logoutUser, refreshSession, type AuthData, type User, type Workspace } from "@/lib/api/auth";
 
 type AuthContextValue = {
   user: User | null;
@@ -14,6 +14,11 @@ type AuthContextValue = {
   setAuth: (data: AuthData) => void;
   clearAuth: () => void;
   refreshUser: () => Promise<void>;
+  /**
+   * Creates the workspace if the user has none, and returns it. Only onboarding
+   * should call this — see the note on ensureWorkspace.
+   */
+  createWorkspaceIfMissing: () => Promise<Workspace>;
   logout: () => Promise<void>;
 };
 
@@ -48,13 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWorkspace(null);
   }, []);
 
+  /**
+   * Reads /auth/me only. It deliberately does not touch /workspaces/me, because
+   * that endpoint *creates* the workspace as a side effect — doing it here would
+   * hand every new account a default-named workspace before onboarding ever got
+   * to ask what they wanted to call it.
+   */
   const refreshUser = useCallback(async () => {
-    const [currentUser, currentWorkspace] = await Promise.all([
-      getCurrentUser(),
-      getCurrentWorkspace(),
-    ]);
-    setUser(normalizeCurrentUser(currentUser.user));
-    setWorkspace(currentWorkspace.workspace);
+    const current = await getCurrentUser();
+    setUser(normalizeCurrentUser(current.user));
+    setWorkspace(current.workspace ?? null);
+  }, []);
+
+  const createWorkspaceIfMissing = useCallback(async () => {
+    const current = await ensureWorkspace();
+    setWorkspace(current.workspace);
+    return current.workspace;
   }, []);
 
   useEffect(() => {
@@ -73,14 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setAccessToken(refreshed.accessToken);
         setAccessTokenState(refreshed.accessToken);
-        const [currentUser, currentWorkspace] = await Promise.all([
-          getCurrentUser(),
-          getCurrentWorkspace(),
-        ]);
+        const current = await getCurrentUser();
         if (!active || mutationVersion.current !== versionAtStart) return;
 
-        setUser(normalizeCurrentUser(currentUser.user));
-        setWorkspace(currentWorkspace.workspace);
+        setUser(normalizeCurrentUser(current.user));
+        setWorkspace(current.workspace ?? null);
       } catch {
         if (!active || mutationVersion.current !== versionAtStart) return;
         clearAuth();
@@ -117,8 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth,
     clearAuth,
     refreshUser,
+    createWorkspaceIfMissing,
     logout,
-  }), [accessToken, clearAuth, isInitialized, isLoading, logout, refreshUser, setAuth, user, workspace]);
+  }), [accessToken, clearAuth, createWorkspaceIfMissing, isInitialized, isLoading, logout, refreshUser, setAuth, user, workspace]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

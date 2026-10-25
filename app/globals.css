@@ -624,7 +624,7 @@ button { cursor: pointer; }
 .notes ul, .notes ol { padding-left: 1.3em; }
 .notes li + li { margin-top: 0.35em; }
 .notes strong { font-weight: 600; }
-.notes hr { border: 0; border-top: 1px solid var(--line-paper); }
+.notes hr { display: none; } /* h2 already carries the rule */
 .notes table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .notes th, .notes td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-paper); vertical-align: top; }
 .notes th { font-weight: 500; color: var(--muted); }
@@ -665,8 +665,8 @@ button { cursor: pointer; }
   .app-page > .app-main { display: block !important; padding: 0; max-width: none; }
   .app-main > :not(.print-doc) { display: none !important; }
   .print-doc { display: block; color: var(--ink); }
-  .print-doc header { padding-bottom: 14mm; margin-bottom: 10mm; border-bottom: 1.5pt solid var(--ink); position: relative; }
-  .print-doc header::before { content: ""; position: absolute; left: 0; right: 0; top: -18mm; height: 3mm; background: linear-gradient(90deg, #3b4152, #7a6a78, #d9a58c, #e9c9b0); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-doc header { padding: 9mm 0 12mm; margin-bottom: 10mm; border-bottom: 1.5pt solid var(--ink); position: relative; }
+  .print-doc header::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2.5mm; border-radius: 2mm; background: linear-gradient(90deg, #3b4152, #7a6a78, #d9a58c, #e9c9b0); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .print-doc__brand { font: 300 14pt var(--serif); letter-spacing: 0.02em; }
   .print-doc header p { margin-top: 10mm; font: 400 9pt var(--mono); color: var(--muted); text-transform: none; }
   .print-doc header h1 { margin-top: 3mm; font: 300 30pt/1.05 var(--serif); letter-spacing: -0.02em; }
@@ -679,6 +679,7 @@ button { cursor: pointer; }
   .print-doc > ul { margin-top: 4mm; padding-left: 5mm; font-size: 10.5pt; line-height: 1.7; }
   .print-doc footer { margin-top: 14mm; padding-top: 4mm; border-top: 0.5pt solid var(--line-paper); font: 400 8pt var(--mono); color: var(--muted); }
   /* Shared page prints its own content */
-  .pub__bar, .pub__actions, .pub__foot, .pub__compose { display: none !important; }
+  .pub__bar, .pub__actions, .pub__foot, .pub__compose, .pub__main > .app-eyebrow, .pub__main > h1 { display: none !important; }
+  .pub__main { padding: 0; max-width: none; }
   .pub, .pub__card { background: #fff !important; border: 0 !important; padding: 0 !important; }
 }

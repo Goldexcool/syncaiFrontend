@@ -102,6 +102,11 @@ export function SharePage({ token }: { token: string }) {
     <p className="app-eyebrow">{m.kind === "lecture" ? "Lecture notes" : "Meeting notes"}{m.durationSec ? <span className="mono"> · {formatClock(m.durationSec)}</span> : null}</p>
     <h1>{data.share?.title || m.title}</h1>
     <div className="pub__actions"><button className="btn btn--primary" type="button" onClick={() => window.print()}>Download PDF →</button></div>
+    <div className="print-doc" aria-hidden="true"><header>
+      <div className="print-doc__brand">VOII</div>
+      <p>{m.kind === "lecture" ? "Lecture notes" : "Meeting notes"}{m.startedAt ? ` · ${new Date(m.startedAt).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}` : ""}</p>
+      <h1>{data.share?.title || m.title}</h1>
+    </header></div>
     {m.summary ? <article className="pub__card"><Markdown>{summaryToMarkdown(m.summary)}</Markdown></article> : null}
     {m.actionItems.length ? <section className="pub__card"><h2>Action items</h2><ul>{m.actionItems.map((a) => <li key={a.id}>{a.title}{a.ownerName ? ` — ${a.ownerName}` : ""}</li>)}</ul></section> : null}
     {m.transcript.length ? <section className="pub__card"><h2>Transcript</h2><ol className="transcript">{m.transcript.map((s) => <li key={s.id}><span className="src mono">{formatClock(s.startSec)} · {s.speaker}</span><p>{s.text}</p></li>)}</ol></section> : null}

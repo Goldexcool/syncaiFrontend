@@ -980,3 +980,45 @@ button { cursor: pointer; }
   .dashboard-content > :not(.print-doc) { display: none !important; }
   .dashboard-content { padding: 0 !important; max-width: none !important; display: block !important; }
 }
+
+/* ── Projects, tasks, clients, AI, inbox (flow) ──────────────────────────── */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.card-grid--wide { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); align-items: start; }
+.project-card, .client-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: var(--r-md); background: var(--ink-2); border: 1px solid var(--line); transition: border-color 0.15s; min-width: 0; }
+.project-card:hover { border-color: var(--line-2); }
+.project-card:hover strong { color: var(--peach); }
+.project-card__head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.project-card__pct { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-on-ink); margin-bottom: 6px; }
+.project-card__pct strong { color: #fff; font-weight: 500; }
+.project-card .progress { height: 4px; display: block; }
+.client-card .chip { align-self: flex-start; }
+.client-card__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.client-card__stats strong { display: block; font-family: var(--serif); font-size: 22px; font-weight: 300; }
+.client-card__stats small { font-size: 12px; color: var(--muted-on-ink); }
+.client-card footer { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.client-card .portal-panel { margin: 0; }
+.dash-task.is-done strong { color: var(--muted-on-ink); text-decoration: line-through; text-decoration-color: var(--sage); }
+.ai-page { padding-top: clamp(12px, 4vw, 40px); }
+.ai-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.ai-hero h1 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -0.03em; line-height: 1.1; }
+.ai-hero .dash-row__icon { width: 48px; height: 48px; border-radius: var(--r-md); }
+.ai-input { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 18px; border-radius: var(--r-pill); background: var(--ink-2); border: 1px solid var(--line-2); color: var(--peach); }
+.ai-input:focus-within { border-color: var(--peach); }
+.ai-input input { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: #fff; font-size: 15px; }
+.ai-label { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.ai-suggestions { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.ai-suggestion { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--ink-2); color: var(--muted-on-ink); font-size: 13.5px; text-align: left; }
+.ai-suggestion:hover { border-color: var(--line-2); color: #fff; }
+.ai-suggestion svg { color: var(--peach); flex: none; }
+.ai-answer__q { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted-on-ink); }
+.ai-plan { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted-on-ink); }
+.ai-confirm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r-sm); background: rgba(242, 200, 168, 0.08); border: 1px solid rgba(242, 200, 168, 0.3); font-size: 13.5px; color: var(--peach); }
+.ai-confirm span { flex: 1; color: #fff; }
+.inbox-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 8px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; text-align: left; color: #fff; }
+.dash-rows > .inbox-row:first-child { border-top: 0; }
+.inbox-row:hover { background: rgba(255, 255, 255, 0.02); }
+.inbox-row.is-unread { box-shadow: inset 2px 0 0 var(--peach); }
+.inbox-row.is-unread strong { color: #fff; }
+.inbox-row:not(.is-unread) strong { color: var(--muted-on-ink); font-weight: 400; }
+.inbox-row__time { font-size: 12px; flex: none; }
+.shell-content--full .kb { width: 100%; }

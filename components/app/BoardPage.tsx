@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import AuthGate from "@/components/AuthGate";
-import { Logo } from "@/components/SiteHeader";
+import AppShell from "@/components/app/AppShell";
 import { ApiRequestError } from "@/lib/api/client";
 import {
   addTaskComment, createBoard, createBoardTask, createProjectQuick, getBoard, getTask, listAllProjects, listBoards, listTaskComments, moveTask, patchTask,
@@ -26,7 +25,7 @@ function columnTone(name: string) {
 }
 
 export default function BoardPage() {
-  return <AuthGate><BoardView /></AuthGate>;
+  return <AppShell crumbs={["Projects", "Board"]} full><BoardView /></AppShell>;
 }
 
 function BoardView() {
@@ -62,7 +61,8 @@ function BoardView() {
           setBoard(b);
           setProjectId(b.projectId);
           setBoards((await listBoards(b.projectId)).boards);
-        } else if (projects[0]) await openProject(projects[0].id);
+        } else if (params.get("project")) await openProject(params.get("project")!);
+        else if (projects[0]) await openProject(projects[0].id);
         setOpenTask(params.get("task"));
       } catch (e) { setError(msg(e)); } finally { setLoading(false); }
     })();
@@ -94,9 +94,7 @@ function BoardView() {
   const total = useMemo(() => board?.columns.reduce((n, c) => n + c.tasks.length, 0) ?? 0, [board]);
   const project = projects.find((p) => p.id === projectId);
 
-  return <div className="app-page" id="main-content">
-    <header className="app-bar"><Link href="/dashboard" aria-label="Back to workspace"><Logo /></Link><Link className="dashboard-text-button" href="/dashboard">← Workspace</Link></header>
-    <main className="app-main app-main--wide kb">
+  return <div className="kb">
       <header className="kb__head">
         <nav className="kb__crumbs" aria-label="Breadcrumb">
           <span>Projects</span><span aria-hidden="true">/</span>
@@ -161,7 +159,6 @@ function BoardView() {
           </section>;
         })}
       </div>}
-    </main>
     {openTask && board ? <TaskPanel id={openTask} board={board} members={members} onClose={closeTask} onChanged={() => void refresh(board.id)} onMove={move} onError={setError} /> : null}
   </div>;
 }

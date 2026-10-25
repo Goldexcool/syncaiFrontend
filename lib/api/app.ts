@@ -199,3 +199,9 @@ export type UsageInfo = {
   percentages: { meetingsPerMonth: number | null; processingMinutesPerMonth: number | null };
 };
 export const getUsageInfo = () => apiClient.get<UsageInfo>("/workspace/usage");
+
+// ── AI assistant ───────────────────────────────────────────────────────────
+
+export type AiResult = { commandId: string | null; intent: string; requiresConfirmation: boolean; summary: string; plan?: string[]; result?: Record<string, unknown> };
+export const runAiCommand = (command: string) => apiClient.post<AiResult>("/ai/command", { command });
+export const confirmAiCommand = (commandId: string) => apiClient.post<AiResult>(`/ai/command/${commandId}/confirm`, {});

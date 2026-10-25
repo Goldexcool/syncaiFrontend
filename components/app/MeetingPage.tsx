@@ -84,6 +84,14 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   const pendingItems = items.filter((i) => i.status === "pending_review").length + updates.filter((u) => u.state === "pending").length;
   const date = new Date(meeting.createdAt ?? Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   const ready = DONE.has(meeting.status ?? "");
+  const lowSpeech = summary?.model === "low-speech-check";
+  const reprocess = async () => {
+    try {
+      await reprocessMeeting(id);
+      setSummary(null);
+      setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued again…" });
+    } catch (e) { setError(msg(e)); }
+  };
 
   return <>
     <header className="mtg-head">
@@ -112,7 +120,15 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
     {working ? <Progress status={status} /> : null}
     {meeting.status === "failed" ? <div className="app-card app-card--clay">
       <p>Processing failed. Your recording is safe.</p>
-      <button className="dashboard-primary-button" type="button" onClick={async () => { try { await reprocessMeeting(id); setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued again…" }); } catch (e) { setError(msg(e)); } }}>Try again →</button>
+      <button className="dashboard-primary-button" type="button" onClick={() => void reprocess()}>Try again →</button>
+    </div> : null}
+    {lowSpeech && !working ? <div className="mtg-banner" role="status">
+      <Icon name="mic" size={18} />
+      <div>
+        <strong>We heard very little speech</strong>
+        <p>{summary?.short}</p>
+      </div>
+      <button className="dashboard-primary-button" type="button" onClick={() => void reprocess()}><Icon name="refresh" size={15} />Reprocess</button>
     </div> : null}
     {["draft", "scheduled", "ready_for_upload"].includes(meeting.status ?? "") ? <Capture meeting={meeting} onQueued={() => setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued…" })} onError={setError} /> : null}
 
@@ -178,11 +194,11 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
   ];
   return <div className="dash-grid">
     <div className="dash-col">
-      <section className="dashboard-surface">
+      {summary?.model === "low-speech-check" ? null : <section className="dashboard-surface">
         <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2>{summary?.model ? <span className="dashboard-count">{summary.model}</span> : null}</div>
         {summary?.short ? <p className="lead">{summary.short}</p> : markdown ? <p className="lead">{markdown.slice(0, 280)}…</p> : <p className="app-muted">No summary for this recording.</p>}
         <button className="dashboard-text-button" type="button" onClick={() => onTab("summary")}>{meeting.kind === "lecture" ? "Read the full notes" : "Read the full summary"} <Icon name="arrow" size={13} /></button>
-      </section>
+      </section>}
       {highlights.some(([, list]) => list.length) ? <section className="dashboard-surface">
         <div className="dashboard-section-heading"><h2>Highlights</h2></div>
         {highlights.filter(([, list]) => list.length).map(([label, list, tone]) => <div key={label} className="highlight">

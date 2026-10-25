@@ -8,8 +8,8 @@ import { Markdown, formatClock, summaryToMarkdown } from "@/components/app/Notes
 import { ApiRequestError } from "@/lib/api/client";
 import {
   convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
-  listActionItems, listAllProjects, listBoards, getBoard, reprocessMeeting, sendBot, updateActionItem, uploadRecording,
-  type ActionItem, type MeetingDetail, type ProcessingStatus, type Segment, type Summary,
+  listActionItems, listAllProjects, listTaskUpdates, decideTaskUpdate, listBoards, getBoard, reprocessMeeting, sendBot, updateActionItem, uploadRecording,
+  type ActionItem, type TaskUpdateSuggestion, type MeetingDetail, type ProcessingStatus, type Segment, type Summary,
 } from "@/lib/api/app";
 import type { Project } from "@/lib/api/dashboard";
 
@@ -27,12 +27,14 @@ function MeetingView({ id }: { id: string }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [items, setItems] = useState<ActionItem[]>([]);
+  const [updates, setUpdates] = useState<TaskUpdateSuggestion[]>([]);
   const [tab, setTab] = useState<"notes" | "approve" | "transcript">("notes");
   const [error, setError] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
 
   const loadOutputs = useCallback(async () => {
-    const [s, t, a] = await Promise.allSettled([getSummary(id), getTranscript(id), listActionItems(id)]);
+    const [s, t, a, u] = await Promise.allSettled([getSummary(id), getTranscript(id), listActionItems(id), listTaskUpdates(id)]);
+    if (u.status === "fulfilled") setUpdates(u.value.updates ?? []);
     if (s.status === "fulfilled") setSummary(s.value.summary);
     if (t.status === "fulfilled") setSegments(t.value.segments ?? []);
     if (a.status === "fulfilled") setItems(a.value.actionItems ?? []);
@@ -66,7 +68,7 @@ function MeetingView({ id }: { id: string }) {
   if (!meeting) return <Frame><p className="app-muted">Opening…</p></Frame>;
 
   const markdown = summary ? summaryToMarkdown(summary) : "";
-  const pending = items.filter((i) => i.status === "pending_review").length;
+  const pending = items.filter((i) => i.status === "pending_review").length + updates.filter((u) => u.state === "pending").length;
   const date = new Date(meeting.createdAt ?? Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 
   return <Frame>
@@ -103,7 +105,10 @@ function MeetingView({ id }: { id: string }) {
         <button role="tab" aria-selected={tab === "transcript"} className={tab === "transcript" ? "is-active" : ""} onClick={() => setTab("transcript")}>Transcript</button>
       </nav>
       {tab === "notes" ? (markdown ? <article className="app-card app-card--paper"><Markdown>{markdown}</Markdown></article> : <p className="app-muted">No notes were produced for this recording.</p>) : null}
-      {tab === "approve" ? <Approvals meetingId={id} items={items} setItems={setItems} onError={setError} /> : null}
+      {tab === "approve" ? <>
+        <BoardUpdates meetingId={id} updates={updates} setUpdates={setUpdates} onError={setError} />
+        <Approvals meetingId={id} items={items} setItems={setItems} onError={setError} />
+      </> : null}
       {tab === "transcript" ? <Transcript segments={segments} /> : null}
     </> : null}
 
@@ -310,5 +315,39 @@ function SharePanel({ meetingId }: { meetingId: string }) {
         } catch (e) { setError(msg(e)); }
       }}>Create link →</button>}
     {error ? <p className="app-error">{error}</p> : null}
+  </div>;
+}
+
+const STATUS_LABEL: Record<string, string> = { todo: "To do", in_progress: "In progress", in_review: "In review", done: "Done" };
+
+/** Existing tasks this conversation moved along. Approve and the card moves on the board. */
+function BoardUpdates({ meetingId, updates, setUpdates, onError }: {
+  meetingId: string; updates: TaskUpdateSuggestion[];
+  setUpdates: (f: (u: TaskUpdateSuggestion[]) => TaskUpdateSuggestion[]) => void; onError: (m: string) => void;
+}) {
+  if (!updates.length) return null;
+  async function decide(u: TaskUpdateSuggestion, decision: "apply" | "dismiss") {
+    try {
+      await decideTaskUpdate(meetingId, u.id, decision);
+      setUpdates((all) => all.map((x) => (x.id === u.id ? { ...x, state: decision === "apply" ? "applied" : "dismissed" } : x)));
+    } catch (e) { onError(msg(e)); }
+  }
+  return <div className="app-card">
+    <h2>Board updates</h2>
+    <p className="app-muted">Things said in this conversation that move existing tasks. Nothing changes until you approve.</p>
+    <ul className="approve-list">
+      {updates.map((u) => <li key={u.id} data-status={u.state === "dismissed" ? "rejected" : u.state}>
+        <div>
+          <h3>{u.task.title}</h3>
+          <p className="status-move">{u.state === "pending" ? <><span>{STATUS_LABEL[u.task.status] ?? u.task.status}</span> → </> : "Moved to "}<strong>{STATUS_LABEL[u.toStatus] ?? u.toStatus}</strong></p>
+          {u.quote ? <blockquote className="src">“{u.quote}”</blockquote> : null}
+        </div>
+        {u.state === "pending" ? <div className="approve-list__actions">
+          <button className="dashboard-quiet-button" type="button" onClick={() => decide(u, "dismiss")}>Dismiss</button>
+          <button className="dashboard-primary-button" type="button" onClick={() => decide(u, "apply")}>Apply</button>
+        </div> : <span className={`chip ${u.state === "applied" ? "chip--sage" : ""}`}>{u.state === "applied" ? "Moved on the board" : "Dismissed"}</span>}
+      </li>)}
+    </ul>
+    {updates.some((u) => u.state === "applied" && u.task.boardId) ? <Link className="dashboard-text-button" href={`/board?board=${updates.find((u) => u.state === "applied" && u.task.boardId)!.task.boardId}`}>Open the board →</Link> : null}
   </div>;
 }

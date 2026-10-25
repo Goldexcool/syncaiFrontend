@@ -759,3 +759,5 @@ button { cursor: pointer; }
 @media (max-width: 640px) { .kb__total { display: none; } .kb__search { min-width: 0; flex: 1; } .kb__fields { grid-template-columns: 1fr; } }
 
 .bot-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.status-move { margin-top: 4px; font-size: 13px; color: var(--muted-on-ink); }
+.status-move strong { color: var(--sage); font-weight: 500; }

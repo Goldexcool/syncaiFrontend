@@ -172,3 +172,13 @@ export const patchTask = (id: string, payload: Partial<{ title: string; descript
   apiClient.patch<{ task: TaskDetail }>(`/tasks/${id}`, payload);
 export const listTaskComments = (id: string) => apiClient.get<{ comments: TaskComment[] }>(`/tasks/${id}/comments?page=1&limit=100`);
 export const addTaskComment = (id: string, body: string) => apiClient.post<{ comment: TaskComment }>(`/tasks/${id}/comments`, { body });
+
+// ── Task updates the AI spotted in a meeting ───────────────────────────────
+
+export type TaskUpdateSuggestion = {
+  id: string; taskId: string; toStatus: string; reason: string; quote?: string | null;
+  state: "pending" | "applied" | "dismissed";
+  task: { id: string; title: string; status: string; boardId?: string | null };
+};
+export const listTaskUpdates = (meetingId: string) => apiClient.get<{ updates: TaskUpdateSuggestion[] }>(`/meetings/${meetingId}/task-updates`);
+export const decideTaskUpdate = (meetingId: string, id: string, decision: "apply" | "dismiss") => apiClient.post(`/meetings/${meetingId}/task-updates/${id}/${decision}`, {});

@@ -1010,6 +1010,7 @@ button { cursor: pointer; }
 .ai-suggestion { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-sm); border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-muted); font-size: 13.5px; text-align: left; }
 .ai-suggestion:hover { border-color: var(--a-line-2); color: var(--a-text); }
 .ai-suggestion svg { color: var(--a-accent-text); flex: none; }
+.ai-answer .lead { white-space: pre-wrap; }
 .ai-answer__q { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--a-muted); }
 .ai-plan { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--a-muted); }
 .ai-confirm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r-sm); background: rgba(0, 0, 0, 0.08); border: 1px solid rgba(0, 0, 0, 0.3); font-size: 13.5px; color: var(--a-accent-text); }

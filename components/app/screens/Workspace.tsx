@@ -215,6 +215,7 @@ function AiBody() {
 
 type AiTask = { id: string; title: string; status?: string; priority?: string; dueDate?: string | null; boardId?: string | null };
 type AiMeeting = { id: string; title: string; shortSummary?: string | null; createdAt?: string };
+type AiActionItem = { id: string; title: string; ownerName?: string | null; meetingId: string; meeting?: { title: string } | null };
 
 /** Show what the assistant found, not just its sentence about finding it. */
 function AiResultView({ result }: { result?: Record<string, unknown> }) {
@@ -222,6 +223,11 @@ function AiResultView({ result }: { result?: Record<string, unknown> }) {
   if (result.found === false) return <p className="app-muted">I couldn’t find a match. Try naming the meeting or project.</p>;
   const tasks = Array.isArray(result.tasks) ? (result.tasks as AiTask[]) : null;
   const meetings = Array.isArray(result.meetings) ? (result.meetings as AiMeeting[]) : result.meeting ? [result.meeting as AiMeeting] : null;
+  const actionItems = Array.isArray(result.actionItems) ? (result.actionItems as AiActionItem[]) : null;
+  if (actionItems) return actionItems.length ? <div className="dash-rows">{actionItems.map((a) => <Link key={a.id} href={`/meetings/${a.meetingId}?tab=action-items`} className="dash-row">
+    <span className="dash-row__icon"><Icon name="check" size={15} /></span>
+    <span className="dash-row__main"><strong className="truncate">{a.title}</strong><small>{[a.ownerName, a.meeting?.title].filter(Boolean).join(" · ")}</small></span>
+  </Link>)}</div> : null;
   if (tasks) return tasks.length ? <div className="dash-rows">{tasks.slice(0, 12).map((t) => <Link key={t.id} href={t.boardId ? `/board?board=${t.boardId}&task=${t.id}` : "/tasks"} className="dash-row">
     <span className="dash-row__main"><strong className="truncate">{t.title}</strong><small>{(t.status ?? "todo").replaceAll("_", " ")}{t.dueDate ? ` · due ${formatDate(t.dueDate)}` : ""}</small></span>
     <span className={`prio prio--${t.priority ?? "medium"}`}>{t.priority ?? "medium"}</span>

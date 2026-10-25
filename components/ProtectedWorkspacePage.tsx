@@ -28,6 +28,14 @@ const usagePathOptions: Array<{ value: UsagePath; label: string; description: st
   },
 ];
 
+const FIRST_MOVES = [
+  { href: "/meetings/new?method=upload", label: "Upload a recording", description: "A meeting, client call or lecture you already have." },
+  { href: "/meetings/new?method=link", label: "Send the notetaker to a call", description: "Paste a Google Meet, Zoom or Teams link." },
+  { href: "/projects", label: "Set up a board", description: "Organise the work before the first meeting." },
+  { href: "/settings", label: "Invite my team", description: "Bring people into the workspace." },
+  { href: "/dashboard", label: "Look around first", description: "Open the workspace and explore." },
+];
+
 function isUsagePath(value: string | null | undefined): value is UsagePath {
   return value === "meeting_notes" || value === "task_boards" || value === "both";
 }
@@ -46,7 +54,7 @@ function Onboarding() {
   const router = useRouter();
   const { user, workspace, createWorkspaceIfMissing, refreshUser } = useAuth();
 
-  const [step, setStep] = useState<"path" | "workspace">("path");
+  const [step, setStep] = useState<"path" | "workspace" | "start">("path");
   const [selectedPath, setSelectedPath] = useState<UsagePath>("both");
   const [workspaceName, setWorkspaceName] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -89,7 +97,7 @@ function Onboarding() {
     try {
       if (name !== workspace?.name) await renameWorkspace(name);
       await refreshUser();
-      router.replace("/dashboard");
+      setStep("start");
     } catch (requestError) {
       setError(messageFor(requestError));
     } finally {
@@ -99,15 +107,25 @@ function Onboarding() {
 
   return (
     <>
-      <p className="eyebrow">{step === "path" ? "01 — A clear place to begin" : "02 — Name the space"}</p>
-      <h1>{step === "path" ? <>Start with a <em>conversation.</em></> : <>Somewhere to keep <em>all of it.</em></>}</h1>
+      <p className="eyebrow">{step === "path" ? "01 — A clear place to begin" : step === "workspace" ? "02 — Name the space" : "03 — First move"}</p>
+      <h1>{step === "path" ? <>Start with a <em>conversation.</em></> : step === "workspace" ? <>Somewhere to keep <em>all of it.</em></> : <>How do you want to <em>start?</em></>}</h1>
       <p>
         {step === "path"
           ? "Your account is ready. Tell VOII what to lead with and the workspace will open on the thing you actually came for."
-          : "Everything VOII files lands here. You can rename it any time from settings."}
+          : step === "workspace" ? "Everything VOII files lands here. You can rename it any time from settings."
+          : "Your workspace is ready. Pick a first move and we’ll take you straight there."}
       </p>
 
-      {step === "path" ? (
+      {step === "start" ? (
+        <div className="workspace-onboarding">
+          <div className="workspace-onboarding__choices">
+            {FIRST_MOVES.map((move) => <button key={move.href} className="workspace-onboarding__choice" type="button" onClick={() => router.replace(move.href)}>
+              <span className="workspace-onboarding__choice-copy"><strong>{move.label}</strong><span>{move.description}</span></span>
+              <span className="workspace-onboarding__choice-mark" aria-hidden="true">→</span>
+            </button>)}
+          </div>
+        </div>
+      ) : step === "path" ? (
         <div className="workspace-onboarding">
           <p className="workspace-onboarding__label">What should VOII help with first?</p>
           <div className="workspace-onboarding__choices" role="radiogroup" aria-label="Choose your starting point">

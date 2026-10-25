@@ -36,7 +36,7 @@ export type ActionItem = {
 
 export type Course = { id: string; name: string; code?: string | null; lecturer?: string | null; keyterms: string[] };
 
-export type BoardTask = { id: string; title: string; priority?: string; status?: string; dueDate?: string | null; sourceMeetingId?: string | null; assignees?: Array<{ user: { fullName?: string | null } }> };
+export type BoardTask = { id: string; title: string; priority?: string; status?: string; dueDate?: string | null; labels?: string[]; sourceMeetingId?: string | null; assignees?: Array<{ user: { id?: string; fullName?: string | null; email?: string | null } }> };
 export type BoardColumn = { id: string; name: string; order: number; tasks: BoardTask[] };
 export type Board = { id: string; name: string; projectId: string; columns: BoardColumn[] };
 
@@ -154,3 +154,21 @@ export type PublicShare = {
   };
 };
 export const getPublicShare = (token: string) => noAuth(`/share/${token}`) as Promise<PublicShare>;
+
+// ── Tasks (board detail panel) ─────────────────────────────────────────────
+
+export type TaskDetail = BoardTask & {
+  description?: string | null;
+  labels?: string[];
+  columnId?: string | null;
+  assignees?: Array<{ user: { id: string; fullName?: string | null; email?: string | null } }>;
+};
+export type TaskComment = { id: string; body: string; createdAt: string; user: { fullName?: string | null; email?: string | null } };
+
+export const getTask = (id: string) => apiClient.get<{ task: TaskDetail }>(`/tasks/${id}`);
+export const createBoardTask = (payload: { title: string; projectId: string; boardId: string; columnId: string; priority?: string }) =>
+  apiClient.post<{ task: TaskDetail }>("/tasks", payload);
+export const patchTask = (id: string, payload: Partial<{ title: string; description: string; priority: string; dueDate: string | null; labels: string[]; assigneeIds: string[] }>) =>
+  apiClient.patch<{ task: TaskDetail }>(`/tasks/${id}`, payload);
+export const listTaskComments = (id: string) => apiClient.get<{ comments: TaskComment[] }>(`/tasks/${id}/comments?page=1&limit=100`);
+export const addTaskComment = (id: string, body: string) => apiClient.post<{ comment: TaskComment }>(`/tasks/${id}/comments`, { body });

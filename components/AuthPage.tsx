@@ -177,8 +177,16 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   const strength = useMemo(() => strengthOf(form.password), [form.password]);
 
   useEffect(() => {
-    const email = new URLSearchParams(window.location.search).get("email");
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get("email");
     if (email) setForm((current) => ({ ...current, email }));
+    // A password must never sit in the address bar (history, autocomplete, logs). If an old
+    // link or a no-JS submit put it there, scrub it immediately and never use it.
+    if (params.has("password")) {
+      params.delete("password");
+      const query = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    }
   }, []);
 
   useEffect(() => {

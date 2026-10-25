@@ -5,6 +5,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
+import NewConversation from "@/components/app/NewConversation";
+import PortalPanel from "@/components/app/PortalPanel";
 import { ApiRequestError } from "@/lib/api/client";
 import {
   createMeeting,
@@ -234,6 +236,12 @@ export default function DashboardPage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  // Deep links (notifications, emails) arrive as /dashboard?view=clients&client=…
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("view");
+    if (requested && [...primaryNav, ...workspaceNav].some((n) => n.id === requested)) setView(requested as DashboardView);
+  }, []);
+
   const navigate = (nextView: DashboardView) => {
     setView(nextView);
     setComposer(null);
@@ -308,6 +316,8 @@ export default function DashboardPage() {
   }
 
   async function handleNotificationRead(notification: Notification) {
+    const href = notification.data?.href;
+    if (href?.startsWith("/")) window.location.assign(href);
     if (notification.read) return;
     try {
       await markNotificationRead(notification.id);
@@ -335,6 +345,7 @@ export default function DashboardPage() {
           <nav className="dashboard-nav" aria-label="Primary workspace views">
             <p className="dashboard-nav__label">Workspace</p>
             {primaryNav.map((item) => <NavItem key={item.id} item={item} active={view === item.id} onClick={() => navigate(item.id)} />)}
+            <Link className="dashboard-nav-item" href="/board"><Icon name="project" size={17} /><span>Board</span></Link>
             <p className="dashboard-nav__label dashboard-nav__label--spaced">Connected work</p>
             {workspaceNav.map((item) => <NavItem key={item.id} item={item} active={view === item.id} onClick={() => navigate(item.id)} />)}
           </nav>
@@ -362,7 +373,7 @@ export default function DashboardPage() {
             </div>
             {error ? <div className="dashboard-alert" role="alert"><span>{error}</span><button type="button" onClick={() => void loadData(true)}><Icon name="refresh" size={15} />Try again</button></div> : null}
             {notice ? <div className="dashboard-alert dashboard-alert--success" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice("")} aria-label="Dismiss message"><Icon name="close" size={15} /></button></div> : null}
-            {composer ? <ComposerPanel type={composer} meetings={data.meetings} onClose={() => setComposer(null)} onCreated={(created) => { setComposer(null); if (created.kind === "invite") setNotice(`Invite sent to ${created.email}.`); setData((current) => ({ ...current, meetings: created.kind === "meeting" ? [created.item, ...current.meetings] : current.meetings, tasks: created.kind === "task" ? [created.item, ...current.tasks] : current.tasks, projects: created.kind === "project" ? [created.item, ...current.projects] : current.projects, clients: created.kind === "client" ? [created.item, ...current.clients] : current.clients })); }} /> : null}
+            {composer === "meeting" ? <NewConversation onClose={() => setComposer(null)} /> : composer ? <ComposerPanel type={composer} meetings={data.meetings} onClose={() => setComposer(null)} onCreated={(created) => { setComposer(null); if (created.kind === "invite") setNotice(`Invite sent to ${created.email}.`); setData((current) => ({ ...current, meetings: created.kind === "meeting" ? [created.item, ...current.meetings] : current.meetings, tasks: created.kind === "task" ? [created.item, ...current.tasks] : current.tasks, projects: created.kind === "project" ? [created.item, ...current.projects] : current.projects, clients: created.kind === "client" ? [created.item, ...current.clients] : current.clients })); }} /> : null}
             {isLoading ? <DataLoading rows={6} /> : <DashboardViewContent view={view} data={data} errors={errors} visibleTasks={visibleTasks} visibleMeetings={visibleMeetings} taskFilter={taskFilter} setTaskFilter={setTaskFilter} onTaskComplete={handleTaskComplete} onCommitmentComplete={handleCommitmentComplete} onNavigate={navigate} onCompose={openComposer} onConnectCalendar={handleConnectCalendar} onDisconnectCalendar={handleDisconnectCalendar} isConnectingCalendar={isConnectingCalendar} />}
           </main>
         </div>
@@ -459,14 +470,15 @@ function CalendarView({ events, errors, onConnect }: { events: CalendarEvent[]; 
 }
 
 function ClientsView({ clients, errors, onCompose }: { clients: Client[]; errors: Record<string, string>; onCompose: () => void }) {
+  const [openClient, setOpenClient] = useState<string | null>(typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("client") : null);
   return <section className="dashboard-surface dashboard-surface--full">
     <SectionHeading title="Clients" count={clients.length} action="Add client" onAction={onCompose} />
     {errors.clients ? <InlineError message={errors.clients} /> : clients.length === 0 ? <EmptyState title="Client work has a place here." body="When you are ready, add a client to connect their conversations, projects, and shared portal." action="Add a client" onAction={onCompose} /> : <div className="dashboard-list dashboard-list--roomy">
-      {clients.map((client) => <article className="dashboard-client-row" key={client.id}>
+      {clients.map((client) => <div key={client.id}><article className="dashboard-client-row">
         <span className="dashboard-avatar dashboard-avatar--client">{initials(client.name, client.companyName)}</span>
         <div><h3>{client.name}</h3><p>{client.companyName || client.contactEmail || "No company details yet"}</p></div>
-        <div className="dashboard-client-row__counts"><span>{client.projectCount || 0} projects</span><span>{client.contactCount || 0} contacts</span></div>
-      </article>)}
+        <div className="dashboard-client-row__counts"><span>{client.projectCount || 0} projects</span><button className="dashboard-text-button" type="button" onClick={() => setOpenClient(openClient === client.id ? null : client.id)}>{openClient === client.id ? "Close" : "Client link"}</button></div>
+      </article>{openClient === client.id ? <PortalPanel clientId={client.id} clientName={client.name} /> : null}</div>)}
     </div>}
   </section>;
 }
@@ -508,13 +520,13 @@ function UsageSummary({ usage }: { usage: UsageSummary | null }) {
 }
 
 function MeetingRow({ meeting, detailed = false }: { meeting: Meeting; detailed?: boolean }) {
-  return <article className={`dashboard-meeting-row ${detailed ? "dashboard-meeting-row--detailed" : ""}`}>
+  return <Link href={`/meetings/${meeting.id}`} className={`dashboard-meeting-row ${detailed ? "dashboard-meeting-row--detailed" : ""}`}>
     <div className="dashboard-row-meta"><StatusMark status={meeting.status} /><span>{sentenceCase(meeting.source || "conversation")}</span><span>{formatDate(meeting.updatedAt || meeting.createdAt)}</span></div>
     <div className="dashboard-meeting-row__main">
       <div><h3>{meeting.title}</h3>{meeting.shortSummary ? <p>{meeting.shortSummary}</p> : <p>{sentenceCase(meeting.status || "Ready to capture")}</p>}</div>
       <div className="dashboard-row-end"><span>{meeting._count?.participants || 0} people</span></div>
     </div>
-  </article>;
+  </Link>;
 }
 
 function TaskRow({ task, detailed = false, onComplete }: { task: Task; detailed?: boolean; onComplete: (task: Task) => Promise<void> }) {

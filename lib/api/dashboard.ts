@@ -131,6 +131,7 @@ export type Notification = {
   message: string;
   read: boolean;
   createdAt: string;
+  data?: { href?: string } | null;
   meetingId?: string | null;
   taskId?: string | null;
 };

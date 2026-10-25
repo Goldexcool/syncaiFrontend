@@ -233,7 +233,7 @@ function Approvals({ meetingId, items, setItems, onError }: { meetingId: string;
       const board = (await getBoard(boardId)).board;
       const columnId = board.columns[0]?.id;
       if (!columnId) throw new Error("That board has no columns yet.");
-      await convertToTasks(meetingId, { actionItemIds: approved.map((i) => i.id), projectId: pid, boardId, columnId });
+      await convertToTasks(meetingId, { itemIds: approved.map((i) => i.id), projectId: pid, boardId, columnId });
       setItems((all) => all.map((i) => (i.status === "approved" ? { ...i, status: "converted" } : i)));
       setDone(boardId);
     } catch (e) { onError(msg(e)); } finally { setSaving(false); }

@@ -89,7 +89,7 @@ export async function uploadRecording(meetingId: string, file: Blob, fileName: s
 export const listActionItems = (meetingId: string) => apiClient.get<{ actionItems: ActionItem[] }>(`/meetings/${meetingId}/action-items?page=1&limit=100`);
 export const updateActionItem = (meetingId: string, itemId: string, payload: Partial<Pick<ActionItem, "status" | "title">>) =>
   apiClient.patch<{ actionItem: ActionItem }>(`/meetings/${meetingId}/action-items/${itemId}`, payload);
-export const convertToTasks = (meetingId: string, payload: { actionItemIds: string[]; projectId: string; boardId: string; columnId: string }) =>
+export const convertToTasks = (meetingId: string, payload: { itemIds: string[]; projectId: string; boardId: string; columnId: string }) =>
   apiClient.post<{ tasks: unknown[] }>(`/meetings/${meetingId}/action-items/convert-to-tasks`, payload);
 
 // ── Projects / boards ──────────────────────────────────────────────────────

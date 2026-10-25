@@ -144,6 +144,7 @@ function Progress({ status }: { status: ProcessingStatus | null }) {
 function Capture({ meeting, onQueued, onError }: { meeting: MeetingDetail; onQueued: () => void; onError: (m: string) => void }) {
   const [busy, setBusy] = useState("");
   const [bot, setBot] = useState<string | null>(null);
+  const [botError, setBotError] = useState("");
 
   async function upload(file: Blob, name: string) {
     setBusy("Uploading… 0%");
@@ -153,10 +154,26 @@ function Capture({ meeting, onQueued, onError }: { meeting: MeetingDetail; onQue
     } catch (e) { onError(msg(e)); } finally { setBusy(""); }
   }
 
+  // Reloading mid-call should show the bot that's already there, not offer a second one.
+  useEffect(() => {
+    if (!meeting.meetingUrl) return;
+    getBotStatus(meeting.id).then((r) => {
+      const s = r.botSession?.status;
+      if (!s || s === "cancelled") return;
+      setBot(s);
+      if (s === "failed") setBotError(r.botSession?.failureReason || "The notetaker couldn’t join.");
+    }).catch(() => undefined);
+  }, [meeting.id, meeting.meetingUrl]);
+
   useEffect(() => {
     if (!bot || ["completed", "failed", "cancelled", "processing_queued"].includes(bot)) return;
     const t = setInterval(async () => {
-      try { const r = await getBotStatus(meeting.id); setBot(r.botSession?.status ?? bot); if (r.botSession?.status === "processing_queued") onQueued(); } catch { /* keep polling */ }
+      try {
+        const r = await getBotStatus(meeting.id);
+        setBot(r.botSession?.status ?? bot);
+        if (r.botSession?.status === "failed") setBotError(r.botSession.failureReason || "The notetaker couldn’t join.");
+        if (r.botSession?.status === "processing_queued") onQueued();
+      } catch { /* keep polling */ }
     }, 5000);
     return () => clearInterval(t);
   }, [bot, meeting.id, onQueued]);
@@ -165,7 +182,8 @@ function Capture({ meeting, onQueued, onError }: { meeting: MeetingDetail; onQue
     {meeting.meetingUrl ? <div>
       <h2>Send VOII to the call</h2>
       <p className="app-muted">A notetaker joins <span className="mono">{meeting.meetingUrl}</span>, records, and leaves when the call ends. Tasks wait for your approval before anything reaches the board.</p>
-      {bot ? <p className="chip chip--sage">Bot: {bot.replace(/_/g, " ")}</p> : <button className="dashboard-primary-button" type="button" disabled={!!busy} onClick={async () => { try { const r = await sendBot(meeting.id); setBot(r.botSession.status); } catch (e) { onError(msg(e)); } }}>Join the call now →</button>}
+      {botError ? <div className="bot-error" role="alert"><p className="app-error">{botError}</p><button className="dashboard-quiet-button" type="button" onClick={() => { setBot(null); setBotError(""); }}>Try again</button></div>
+        : bot ? <p className="chip chip--sage" role="status">Notetaker: {bot.replace(/_/g, " ")}</p> : <button className="dashboard-primary-button" type="button" disabled={!!busy} onClick={async () => { try { const r = await sendBot(meeting.id); setBot(r.botSession.status); } catch (e) { onError(msg(e)); } }}>Join the call now →</button>}
     </div> : null}
     <div>
       <h2>{meeting.meetingUrl ? "Or add a recording" : "Add the recording"}</h2>

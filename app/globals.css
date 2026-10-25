@@ -757,3 +757,5 @@ button { cursor: pointer; }
 .kb__comments li { display: flex; gap: 10px; }
 .kb__comments p { margin-top: 2px; font-size: 14px; white-space: pre-wrap; }
 @media (max-width: 640px) { .kb__total { display: none; } .kb__search { min-width: 0; flex: 1; } .kb__fields { grid-template-columns: 1fr; } }
+
+.bot-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }

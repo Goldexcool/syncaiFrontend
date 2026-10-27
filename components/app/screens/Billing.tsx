@@ -106,7 +106,7 @@ function BillingBody() {
   const cancelledPlan = sub?.status === "cancelled" && current !== "free";
 
   return <>
-    <header className="dashboard-content__header"><div><p className="dashboard-location"><Link href="/settings">Settings</Link> / Billing</p><h1>Plan and billing.</h1><p className="dashboard-intro">What you're on, what you've used this month, and room to grow.</p></div></header>
+    <header className="dashboard-content__header"><div><p className="dashboard-location"><Link href="/settings">Settings</Link> / Billing</p><h1>Plan and billing.</h1><p className="dashboard-intro">What you’re on, what you’ve used this month, and room to grow.</p></div></header>
     {notice ? <div className="dashboard-alert dashboard-alert--success" role="status"><span>{notice}</span></div> : null}
     {error ? <div className="dashboard-alert" role="alert"><span>{error}</span></div> : null}
 

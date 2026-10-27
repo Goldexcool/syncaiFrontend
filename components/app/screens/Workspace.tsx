@@ -122,6 +122,7 @@ function ClientsBody() {
   }, []);
 
   const active = Object.values(portalCount).filter(Boolean).length;
+  const selected = clients?.find((c) => c.id === open) ?? clients?.[0] ?? null;
   return <>
     <header className="dashboard-content__header">
       <div><p className="dashboard-location">Client Workspace</p><h1>Keep clients in the loop.</h1><p className="dashboard-intro">{clients ? `${clients.length} client${clients.length === 1 ? "" : "s"} · ${active} link${active === 1 ? "" : "s"} live.` : "Loading…"} Each client gets a private link to follow progress and message your team.</p></div>
@@ -129,17 +130,25 @@ function ClientsBody() {
     </header>
     {composer ? <ComposerPanel type="client" meetings={[]} onClose={() => setComposer(false)} onCreated={(c) => { setComposer(false); if (c.kind === "client") { setClients((all) => [c.item, ...(all ?? [])]); setOpen(c.item.id); } }} /> : null}
     {clients === null ? <p className="app-muted">Loading…</p> : clients.length === 0 ? <section className="dashboard-surface"><EmptyState title="Bring your clients into the loop." body="Add a client, then share a private link where they see progress and can message you." action="Add your first client" onAction={() => setComposer(true)} /></section>
-      : <div className="card-grid card-grid--wide">
-        {clients.map((c) => <article key={c.id} className="client-card">
-          <div className="project-card__head">
+      : <div className={`clients${open ? " clients--open" : ""}`}>
+        <nav className="dashboard-surface clients__list" aria-label="Clients">
+          {clients.map((c) => <button key={c.id} type="button" className={`clients__row${selected?.id === c.id ? " is-active" : ""}`} aria-current={selected?.id === c.id ? "true" : undefined} onClick={() => setOpen(c.id)}>
             <span className="dashboard-avatar dashboard-avatar--client">{initials(c.name, c.companyName)}</span>
             <span className="dash-row__main"><strong className="truncate">{c.name}</strong><small className="truncate">{c.companyName || c.contactEmail || "No company details"}</small></span>
-          </div>
-          <span className={`chip ${portalCount[c.id] ? "chip--sage" : ""}`}><Icon name={portalCount[c.id] ? "check" : "globe"} size={12} />{portalCount[c.id] ? "Client link live" : "No client link yet"}</span>
-          <div className="client-card__stats"><div><strong>{c.projectCount ?? 0}</strong><small>Projects</small></div><div><strong>{c.contactCount ?? 0}</strong><small>Contacts</small></div></div>
-          <footer><button className="dashboard-quiet-button" type="button" onClick={() => setOpen(open === c.id ? null : c.id)}><Icon name="share" size={14} />{open === c.id ? "Close" : portalCount[c.id] ? "Link & messages" : "Create client link"}</button></footer>
-          {open === c.id ? <PortalPanel clientId={c.id} clientName={c.name} /> : null}
-        </article>)}
+            <span className={`clients__dot${portalCount[c.id] ? " is-live" : ""}`} title={portalCount[c.id] ? "Client link live" : "No client link yet"} aria-label={portalCount[c.id] ? "Client link live" : "No client link yet"} />
+          </button>)}
+        </nav>
+        {selected ? <div className="clients__detail">
+          <section className="dashboard-surface clients__head">
+            <button type="button" className="dashboard-text-button clients__back" onClick={() => setOpen(null)}>← All clients</button>
+            <div className="project-card__head">
+              <span className="dashboard-avatar dashboard-avatar--client clients__avatar">{initials(selected.name, selected.companyName)}</span>
+              <span className="dash-row__main"><strong className="clients__name">{selected.name}</strong><small>{[selected.companyName, selected.contactEmail].filter(Boolean).join(" · ") || "No company details"}</small></span>
+            </div>
+            <div className="clients__stats"><span><strong>{selected.projectCount ?? 0}</strong> projects</span><span><strong>{selected.contactCount ?? 0}</strong> contacts</span></div>
+          </section>
+          <PortalPanel key={selected.id} clientId={selected.id} clientName={selected.name} onLive={(live) => setPortalCount((m) => ({ ...m, [selected.id]: live }))} />
+        </div> : null}
       </div>}
   </>;
 }

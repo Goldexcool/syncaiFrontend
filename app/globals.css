@@ -1142,3 +1142,14 @@ button { cursor: pointer; }
   .mtg-side { position: static; max-height: 70vh; order: -1; }
   .mtg-main { min-height: 0; }
 }
+
+/* Choice cards (settings): a calmer radio group */
+.choice-list { display: grid; gap: 8px; }
+.choice { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; text-align: left; border-radius: var(--r-md); border: 1px solid var(--a-line); background: var(--a-surface); color: var(--a-text); transition: border-color 0.15s, background 0.15s; }
+.choice:hover { border-color: var(--a-line-2); }
+.choice.is-selected { border-color: var(--a-text); background: var(--a-surface-2); }
+.choice__copy { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.choice__copy strong { font-weight: 500; }
+.choice__copy span { color: var(--a-muted); font-size: 13.5px; }
+.choice__mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--a-line-2); flex: none; }
+.choice.is-selected .choice__mark { background: var(--a-text); border-color: var(--a-text); color: var(--a-surface); }

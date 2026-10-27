@@ -7,6 +7,7 @@ import PortalPanel from "@/components/app/PortalPanel";
 import { ComposerPanel, SettingsView, type DashboardData } from "@/components/app/parts";
 import { EmptyState, Icon, SectionHeading, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
 import { confirmAiCommand, listPortals, runAiCommand, type AiResult } from "@/lib/api/app";
+import { ensureWorkspace, setAutoApprove, type AutoApprove } from "@/lib/api/auth";
 import {
   disconnectGoogleCalendar, getGoogleCalendarAuthUrl, getSubscription, getWorkspaceUsage, listClients, listIntegrations, listNotifications, listProjects,
   listTasks, listWorkspaceMembers, markAllNotificationsRead, markNotificationRead, updateTask,
@@ -276,6 +277,35 @@ function InboxBody() {
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
+const AUTO_APPROVE: Array<[AutoApprove, string, string]> = [
+  ["off", "Review everything", "Every action item waits for you to approve it."],
+  ["confident", "Approve the clear ones", "VOII approves items it is sure about and that have an owner. The rest wait for you."],
+  ["all", "Approve everything", "Every action item is approved as soon as the meeting is processed."],
+];
+
+function AutoApproveSetting() {
+  const [mode, setMode] = useState<AutoApprove | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => { ensureWorkspace().then((r) => setMode(r.workspace?.actionItemAutoApprove ?? "off")).catch(() => setMode("off")); }, []);
+  async function choose(next: AutoApprove) {
+    const prev = mode;
+    setMode(next);
+    setError("");
+    try { await setAutoApprove(next); } catch (e) { setMode(prev); setError(getErrorMessage(e)); }
+  }
+  return <section className="dashboard-surface">
+    <SectionHeading title="Action items" />
+    <p className="app-muted">What happens to the action items VOII finds in a meeting. Applies to meetings processed from now on.</p>
+    <div className="choice-list" role="radiogroup" aria-label="Approve action items">
+      {AUTO_APPROVE.map(([value, label, description]) => <button key={value} type="button" role="radio" aria-checked={mode === value} className={`choice${mode === value ? " is-selected" : ""}`} onClick={() => void choose(value)} disabled={mode === null}>
+        <span className="choice__copy"><strong>{label}</strong><span>{description}</span></span>
+        <span className="choice__mark" aria-hidden="true">{mode === value ? <Icon name="check" size={13} /> : null}</span>
+      </button>)}
+    </div>
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+  </section>;
+}
+
 export function SettingsScreen() {
   return <AppShell crumbs={["Settings"]}><SettingsBody /></AppShell>;
 }
@@ -301,6 +331,7 @@ function SettingsBody() {
     {data ? <SettingsView data={data} isConnectingCalendar={busy}
       onConnectCalendar={async () => { setBusy(true); try { window.location.assign((await getGoogleCalendarAuthUrl()).authUrl); } catch { setBusy(false); } }}
       onDisconnectCalendar={async () => { setBusy(true); await disconnectGoogleCalendar().catch(() => undefined); setData((d) => d && { ...d, integrations: d.integrations.filter((x) => x.type !== "google_calendar") }); setBusy(false); }} /> : <p className="app-muted">Loading…</p>}
+    <AutoApproveSetting />
     <section className="dashboard-surface">
       <SectionHeading title="Members" count={members.length} action="Invite someone" onAction={() => setInvite(true)} />
       {invite ? <ComposerPanel type="invite" meetings={[]} onClose={() => setInvite(false)} onCreated={(c) => { setInvite(false); if (c.kind === "invite") setNotice(`Invite sent to ${c.email}.`); }} /> : null}

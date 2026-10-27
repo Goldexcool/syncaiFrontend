@@ -21,7 +21,10 @@ export type Workspace = {
   role?: string;
   plan?: string;
   status?: string;
+  actionItemAutoApprove?: AutoApprove;
 };
+
+export type AutoApprove = "off" | "confident" | "all";
 
 /**
  * `workspace` is null until the user first touches a workspace-scoped endpoint.
@@ -87,6 +90,10 @@ export function getCurrentUser() {
  */
 export function ensureWorkspace() {
   return apiClient.get<CurrentWorkspaceData>("/workspaces/me");
+}
+
+export function setAutoApprove(actionItemAutoApprove: AutoApprove) {
+  return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { actionItemAutoApprove });
 }
 
 export function renameWorkspace(name: string) {

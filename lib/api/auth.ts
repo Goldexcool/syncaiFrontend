@@ -22,6 +22,7 @@ export type Workspace = {
   plan?: string;
   status?: string;
   actionItemAutoApprove?: AutoApprove;
+  vocabulary?: string[];
 };
 
 export type AutoApprove = "off" | "confident" | "all";
@@ -94,6 +95,10 @@ export function ensureWorkspace() {
 
 export function setAutoApprove(actionItemAutoApprove: AutoApprove) {
   return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { actionItemAutoApprove });
+}
+
+export function setVocabulary(vocabulary: string[]) {
+  return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { vocabulary });
 }
 
 export function renameWorkspace(name: string) {

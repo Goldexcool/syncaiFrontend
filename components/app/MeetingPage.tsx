@@ -7,7 +7,7 @@ import { Markdown, formatClock, summaryToMarkdown } from "@/components/app/Notes
 import { Icon, formatDate, formatTime } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import {
-  askMeeting, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
+  askMeeting, correctMeeting, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
   listActionItems, listAllProjects, listTaskUpdates, listTasksForMeeting, decideTaskUpdate, listBoards, getBoard, reprocessMeeting, sendBot, updateActionItem, uploadRecording,
   type ActionItem, type BoardColumn, type TaskUpdateSuggestion, type MeetingDetail, type ProcessingStatus, type Segment, type Summary,
 } from "@/lib/api/app";
@@ -187,7 +187,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
 
         <AskPanel meetingId={id} live={live} />
       </div>
-      <TranscriptPanel meeting={meeting} segments={segments} live={live} />
+      <TranscriptPanel meeting={meeting} segments={segments} live={live} onCorrected={load} onError={setError} />
     </div> : null}
 
     {/* Print-only document: what "Export PDF" produces. */}
@@ -257,8 +257,22 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
   </div>;
 }
 
-function TranscriptPanel({ meeting, segments, live }: { meeting: MeetingDetail; segments: Segment[]; live: boolean }) {
+function TranscriptPanel({ meeting, segments, live, onCorrected, onError }: { meeting: MeetingDetail; segments: Segment[]; live: boolean; onCorrected: () => Promise<void>; onError: (m: string) => void }) {
   const [q, setQ] = useState("");
+  const [fixing, setFixing] = useState<{ from: string; to: string; remember: boolean } | null>(null);
+  const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fixes = meeting.autoCorrections ?? [];
+  async function correct(body: Parameters<typeof correctMeeting>[1]) {
+    setBusy(true);
+    try { await correctMeeting(meeting.id, body); setFixing(null); setRenaming(null); await onCorrected(); }
+    catch (e) { onError(msg(e)); }
+    finally { setBusy(false); }
+  }
+  function openFix() {
+    const picked = window.getSelection()?.toString().trim() ?? "";
+    setFixing({ from: picked.length <= 60 ? picked : "", to: "", remember: true });
+  }
   const listRef = useRef<HTMLOListElement>(null);
   const shown = q ? segments.filter((s) => s.text.toLowerCase().includes(q.toLowerCase()) || s.speaker.toLowerCase().includes(q.toLowerCase())) : segments;
   const mark = (text: string) => {
@@ -282,14 +296,42 @@ function TranscriptPanel({ meeting, segments, live }: { meeting: MeetingDetail; 
   return <aside className="dashboard-surface mtg-side" aria-label="Transcript">
     <div className="dashboard-section-heading">
       <h2>{live ? <><span className="live-dot" aria-hidden="true" />Live transcript</> : "Transcript"}</h2>
-      {segments.length ? <button className="dashboard-text-button" type="button" onClick={download}><Icon name="download" size={14} />.txt</button> : null}
+      {segments.length && !live ? <span className="tp-actions">
+        <button className="dashboard-text-button" type="button" onMouseDown={(e) => e.preventDefault()} onClick={openFix}><Icon name="sparkles" size={14} />Fix a word</button>
+        <button className="dashboard-text-button" type="button" onClick={download}><Icon name="download" size={14} />.txt</button>
+      </span> : null}
     </div>
+    {fixes.length ? <details className="tp-fixes">
+      <summary>VOII corrected {fixes.length} word{fixes.length === 1 ? "" : "s"} from the conversation</summary>
+      <ul>{fixes.map((c) => <li key={`${c.from}→${c.to}`}>
+        <span><s>{c.from}</s> → <strong>{c.to}</strong>{c.reason ? <small> · {c.reason}</small> : null}</span>
+        <button className="dashboard-text-button" type="button" disabled={busy} onClick={() => void correct({ kind: "word", from: c.to, to: c.from, forget: true })}>Undo</button>
+      </li>)}</ul>
+    </details> : null}
+    {fixing ? <form method="post" className="tp-fix" onSubmit={(e) => { e.preventDefault(); if (fixing.from.trim() && fixing.to.trim()) void correct({ kind: "word", from: fixing.from, to: fixing.to, remember: fixing.remember }); }}>
+      <div className="tp-fix__row">
+        <input autoFocus value={fixing.from} onChange={(e) => setFixing({ ...fixing, from: e.target.value })} placeholder="What VOII heard" aria-label="What VOII heard" />
+        <span aria-hidden="true">→</span>
+        <input value={fixing.to} onChange={(e) => setFixing({ ...fixing, to: e.target.value })} placeholder="What was said" aria-label="What was said" />
+      </div>
+      <label className="app-check"><input type="checkbox" checked={fixing.remember} onChange={(e) => setFixing({ ...fixing, remember: e.target.checked })} /> Always spell it this way</label>
+      <div className="tp-fix__actions">
+        <button className="dashboard-quiet-button" type="button" onClick={() => setFixing(null)}>Cancel</button>
+        <button className="dashboard-primary-button" type="submit" disabled={busy || !fixing.from.trim() || !fixing.to.trim()}>{busy ? "Fixing…" : "Fix everywhere"}</button>
+      </div>
+    </form> : null}
     {segments.length ? <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search what was said" aria-label="Search transcript" /></label> : null}
     <ol className="transcript mtg-side__list" ref={listRef} aria-live={live ? "polite" : undefined}>
       {shown.map((s) => <li key={s.id} className="tline">
         <span className="mono tline__time">{formatClock(s.startSec)}</span>
         <span className="dashboard-avatar">{initialsOf(s.speaker)}</span>
-        <div><span className="tline__speaker">{s.speaker}</span><p>{mark(s.text)}</p></div>
+        <div>
+          {renaming?.from === s.speaker ? <form method="post" className="tp-rename" onSubmit={(e) => { e.preventDefault(); if (renaming.to.trim() && renaming.to.trim() !== s.speaker) void correct({ kind: "speaker", from: s.speaker, to: renaming.to.trim() }); }}>
+            <input autoFocus value={renaming.to} onChange={(e) => setRenaming({ ...renaming, to: e.target.value })} aria-label={`Rename ${s.speaker}`} onKeyDown={(e) => e.key === "Escape" && setRenaming(null)} />
+            <button className="dashboard-text-button" type="submit" disabled={busy}>Rename</button>
+          </form> : <button type="button" className="tline__speaker" title="Rename this speaker everywhere in the meeting" disabled={live} onClick={() => setRenaming({ from: s.speaker, to: s.speaker })}>{s.speaker}</button>}
+          <p>{mark(s.text)}</p>
+        </div>
       </li>)}
       {!segments.length ? <li className="app-muted">{live ? "Listening… lines appear here as people speak." : "No transcript for this recording."}</li> : null}
       {q && segments.length && !shown.length ? <li className="app-muted">No lines match “{q}”.</li> : null}

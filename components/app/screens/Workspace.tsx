@@ -7,7 +7,7 @@ import PortalPanel from "@/components/app/PortalPanel";
 import { ComposerPanel, SettingsView, type DashboardData } from "@/components/app/parts";
 import { EmptyState, Icon, SectionHeading, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
 import { confirmAiCommand, listPortals, runAiCommand, type AiResult } from "@/lib/api/app";
-import { ensureWorkspace, setAutoApprove, type AutoApprove } from "@/lib/api/auth";
+import { ensureWorkspace, setAutoApprove, setVocabulary, type AutoApprove } from "@/lib/api/auth";
 import {
   disconnectGoogleCalendar, getGoogleCalendarAuthUrl, getSubscription, getWorkspaceUsage, listClients, listIntegrations, listNotifications, listProjects,
   listTasks, listWorkspaceMembers, markAllNotificationsRead, markNotificationRead, updateTask,
@@ -315,6 +315,35 @@ function AutoApproveSetting() {
   </section>;
 }
 
+/** Words VOII must spell exactly in transcripts and notes. */
+function VocabularySetting() {
+  const [words, setWords] = useState<string[] | null>(null);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => { ensureWorkspace().then((r) => setWords(r.workspace?.vocabulary ?? [])).catch(() => setWords([])); }, []);
+  async function save(next: string[]) {
+    const prev = words;
+    setWords(next);
+    setError("");
+    try { await setVocabulary(next); } catch (e) { setWords(prev); setError(getErrorMessage(e)); }
+  }
+  function add(e: FormEvent) {
+    e.preventDefault();
+    const fresh = draft.split(",").map((w) => w.trim()).filter((w) => w && !words?.some((x) => x.toLowerCase() === w.toLowerCase()));
+    setDraft("");
+    if (fresh.length && words) void save([...words, ...fresh]);
+  }
+  return <section className="dashboard-surface">
+    <SectionHeading title="Vocabulary" count={words?.length} />
+    <p className="app-muted">Company names, products and people VOII should always spell right — for example “Providus” rather than “Profidus”. Used for every new meeting, together with your team’s and clients’ names.</p>
+    <form method="post" className="vocab" onSubmit={add}>
+      {words?.map((w) => <span key={w} className="vocab__word">{w}<button type="button" aria-label={`Remove ${w}`} onClick={() => void save(words.filter((x) => x !== w))}>×</button></span>)}
+      <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={words?.length ? "Add another…" : "Type a word and press Enter"} aria-label="Add a word" disabled={words === null} maxLength={60} />
+    </form>
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+  </section>;
+}
+
 export function SettingsScreen() {
   return <AppShell crumbs={["Settings"]}><SettingsBody /></AppShell>;
 }
@@ -341,6 +370,7 @@ function SettingsBody() {
       onConnectCalendar={async () => { setBusy(true); try { window.location.assign((await getGoogleCalendarAuthUrl()).authUrl); } catch { setBusy(false); } }}
       onDisconnectCalendar={async () => { setBusy(true); await disconnectGoogleCalendar().catch(() => undefined); setData((d) => d && { ...d, integrations: d.integrations.filter((x) => x.type !== "google_calendar") }); setBusy(false); }} /> : <p className="app-muted">Loading…</p>}
     <AutoApproveSetting />
+    <VocabularySetting />
     <section className="dashboard-surface">
       <SectionHeading title="Members" count={members.length} action="Invite someone" onAction={() => setInvite(true)} />
       {invite ? <ComposerPanel type="invite" meetings={[]} onClose={() => setInvite(false)} onCreated={(c) => { setInvite(false); if (c.kind === "invite") setNotice(`Invite sent to ${c.email}.`); }} /> : null}

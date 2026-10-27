@@ -3,9 +3,11 @@ import type { Meeting, Pagination, Project } from "@/lib/api/dashboard";
 
 export type MeetingKind = "meeting" | "lecture";
 
+export type AutoCorrection = { from: string; to: string; confidence: number; reason: string };
 export type MeetingDetail = Meeting & {
   kind?: MeetingKind;
   course?: { id: string; name: string; code?: string | null } | null;
+  autoCorrections?: AutoCorrection[] | null;
 };
 
 export type ProcessingStatus = { status: string; stage: string; progress: number; message: string };
@@ -116,6 +118,8 @@ export const createCourse = (payload: { name: string; code?: string; lecturer?: 
 export const sendBot = (meetingId: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/join`, { botName });
 export const scheduleBot = (meetingId: string, joinAt: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/schedule`, { joinAt, botName });
 export const setEventBot = (eventId: string, enabled: boolean) => apiClient.patch<{ event: { id: string; botEnabled: boolean; meetingId?: string | null } }>(`/calendar/events/${eventId}/bot`, { enabled });
+export const correctMeeting = (meetingId: string, body: { kind: "word" | "speaker"; from: string; to: string; remember?: boolean; forget?: boolean }) =>
+  apiClient.post<{ changed: number; remembered: boolean }>(`/meetings/${meetingId}/transcript/corrections`, body);
 export const askMeeting = (meetingId: string, question: string) => apiClient.post<{ answer: string; linesConsidered: number }>(`/meetings/${meetingId}/ask`, { question });
 export const getBotStatus = (meetingId: string) => apiClient.get<{ botSession?: { status: string; failureReason?: string | null } | null }>(`/meetings/${meetingId}/bot/status`);
 

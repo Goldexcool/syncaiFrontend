@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import AppShell from "@/components/app/AppShell";
 import { Markdown, formatClock, summaryToMarkdown } from "@/components/app/Notes";
-import { StatusChip } from "@/components/app/screens/Meetings";
 import { Icon, formatDate, formatTime } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import {
-  bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
+  askMeeting, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
   listActionItems, listAllProjects, listTaskUpdates, listTasksForMeeting, decideTaskUpdate, listBoards, getBoard, reprocessMeeting, sendBot, updateActionItem, uploadRecording,
   type ActionItem, type BoardColumn, type TaskUpdateSuggestion, type MeetingDetail, type ProcessingStatus, type Segment, type Summary,
 } from "@/lib/api/app";
@@ -16,8 +15,11 @@ import type { Project } from "@/lib/api/dashboard";
 
 const WORKING = new Set(["uploaded", "queued", "processing", "transcribing", "summarizing", "extracting_action_items"]);
 const DONE = new Set(["pending_review", "tasks_created", "completed"]);
+/** Bot states while it is in the call (the transcript is arriving live). */
+const LIVE = new Set(["joined", "recording"]);
+const BOT_ACTIVE = new Set(["scheduled", "joining", "joined", "recording", "leaving"]);
 const msg = (e: unknown) => (e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : "Something went wrong.");
-type Tab = "overview" | "transcript" | "summary" | "action-items" | "tasks";
+type Tab = "overview" | "summary" | "action-items" | "tasks";
 
 export default function MeetingPage({ id }: { id: string }) {
   const [title, setTitle] = useState("Meeting");
@@ -34,10 +36,11 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   const [tab, setTabState] = useState<Tab>("overview");
   const [error, setError] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [botStatus, setBotStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["overview", "transcript", "summary", "action-items", "tasks"].includes(t)) setTabState(t as Tab);
+    if (t && ["overview", "summary", "action-items", "tasks"].includes(t)) setTabState(t as Tab);
   }, []);
   const setTab = (t: Tab) => { setTabState(t); window.history.replaceState(null, "", `?tab=${t}`); };
 
@@ -59,6 +62,24 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   }, [id, loadOutputs, onTitle]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // While a notetaker is in (or heading to) the call: follow its state, and pull
+  // the live transcript every few seconds once it is recording.
+  useEffect(() => {
+    let stop = false;
+    const tick = async () => {
+      try {
+        const { botSession } = await getBotStatus(id);
+        if (stop) return;
+        const next = botSession?.status ?? null;
+        setBotStatus((prev) => { if (prev && BOT_ACTIVE.has(prev) && next && !BOT_ACTIVE.has(next)) void load(); return next; });
+        if (next && LIVE.has(next)) setSegments((await getTranscript(id)).segments ?? []);
+        if (next && BOT_ACTIVE.has(next)) setTimeout(tick, 3000);
+      } catch { if (!stop) setTimeout(tick, 6000); }
+    };
+    void tick();
+    return () => { stop = true; };
+  }, [id, load]);
 
   // Poll while the worker is busy; reload everything once it finishes.
   const working = WORKING.has(status?.stage ?? meeting?.status ?? "");
@@ -84,6 +105,8 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   const pendingItems = items.filter((i) => i.status === "pending_review").length + updates.filter((u) => u.state === "pending").length;
   const date = new Date(meeting.createdAt ?? Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   const ready = DONE.has(meeting.status ?? "");
+  const live = !!botStatus && LIVE.has(botStatus);
+  const botActive = !!botStatus && BOT_ACTIVE.has(botStatus);
   const lowSpeech = summary?.model === "low-speech-check";
   const reprocess = async () => {
     try {
@@ -97,7 +120,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
     <header className="mtg-head">
       <div>
         <p className="app-eyebrow">
-          <StatusChip status={meeting.status} />
+          <MeetingState botStatus={botStatus} meetingStatus={meeting.status ?? ""} working={working} />
           {isLecture ? <span className="chip chip--peach">Lecture</span> : null}
           {meeting.course ? <span>{meeting.course.code ? `${meeting.course.code} · ` : ""}{meeting.course.name}</span> : null}
         </p>
@@ -130,31 +153,42 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
       </div>
       <button className="dashboard-primary-button" type="button" onClick={() => void reprocess()}><Icon name="refresh" size={15} />Reprocess</button>
     </div> : null}
-    {["draft", "scheduled", "ready_for_upload"].includes(meeting.status ?? "") ? <Capture meeting={meeting} onQueued={() => setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued…" })} onError={setError} /> : null}
+    {!botActive && ["draft", "scheduled", "ready_for_upload"].includes(meeting.status ?? "") ? <Capture meeting={meeting} onQueued={() => setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued…" })} onError={setError} /> : null}
 
-    {ready ? <>
-      <nav className="tabs" role="tablist" aria-label="Meeting sections">
-        {([
-          ["overview", "Overview", "home"],
-          ["transcript", "Transcript", "conversation"],
-          ["summary", isLecture ? "Notes" : "Summary", "sparkles"],
-          ["action-items", "Action items", "check"],
-          ["tasks", "Tasks", "board"],
-        ] as const).map(([value, label, icon]) => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
-          <Icon name={icon} size={15} />{label}
-          {value === "action-items" && pendingItems ? <span className="tabs__count">{pendingItems}</span> : null}
-        </button>)}
-      </nav>
+    {ready || botActive || segments.length ? <div className="mtg-layout">
+      <div className="mtg-main">
+        {ready ? <>
+          <nav className="tabs" role="tablist" aria-label="Meeting sections">
+            {([
+              ["overview", "Overview", "home"],
+              ["summary", isLecture ? "Notes" : "Summary", "sparkles"],
+              ["action-items", "Action items", "check"],
+              ["tasks", "Tasks", "board"],
+            ] as const).map(([value, label, icon]) => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
+              <Icon name={icon} size={15} />{label}
+              {value === "action-items" && pendingItems ? <span className="tabs__count">{pendingItems}</span> : null}
+            </button>)}
+          </nav>
 
-      {tab === "overview" ? <Overview meeting={meeting} summary={summary} items={items} updates={updates} speakers={speakers} markdown={markdown} onTab={setTab} /> : null}
-      {tab === "transcript" ? <TranscriptTab meeting={meeting} segments={segments} speakers={speakers} /> : null}
-      {tab === "summary" ? <SummaryTab meeting={meeting} summary={summary} markdown={markdown} onShare={() => setShareOpen(true)} /> : null}
-      {tab === "action-items" ? <>
-        <BoardUpdates meetingId={id} updates={updates} setUpdates={setUpdates} onError={setError} />
-        <ActionItemsReview meetingId={id} items={items} setItems={setItems} onError={setError} />
-      </> : null}
-      {tab === "tasks" ? <MeetingTasks meetingId={id} /> : null}
-    </> : null}
+          {tab === "overview" ? <Overview meeting={meeting} summary={summary} items={items} updates={updates} speakers={speakers} markdown={markdown} onTab={setTab} /> : null}
+          {tab === "summary" ? <SummaryTab meeting={meeting} summary={summary} markdown={markdown} onShare={() => setShareOpen(true)} /> : null}
+          {tab === "action-items" ? <>
+            <BoardUpdates meetingId={id} updates={updates} setUpdates={setUpdates} onError={setError} />
+            <ActionItemsReview meetingId={id} items={items} setItems={setItems} onError={setError} />
+          </> : null}
+          {tab === "tasks" ? <MeetingTasks meetingId={id} /> : null}
+        </> : <section className="dashboard-surface mtg-livecard">
+          <h2>{live ? "The meeting is happening now." : "Waiting for the notetaker."}</h2>
+          <p className="app-muted">{live
+            ? "The conversation appears on the right as people speak. Ask anything below — answers use what has been said so far. Notes, action items and the full transcript arrive when the call ends."
+            : "Once someone admits VOII Notetaker into the call, the conversation will start appearing on the right."}</p>
+          {speakers.length ? <p className="app-muted">{speakers.length} speaker{speakers.length === 1 ? "" : "s"} so far: {speakers.map((sp) => sp.name).join(", ")}</p> : null}
+        </section>}
+
+        <AskPanel meetingId={id} live={live} />
+      </div>
+      <TranscriptPanel meeting={meeting} segments={segments} live={live} />
+    </div> : null}
 
     {/* Print-only document: what "Export PDF" produces. */}
     {markdown ? <section className="print-doc" aria-hidden="true">
@@ -192,13 +226,19 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
     ["Blockers", (summary?.blockers ?? []).map((b) => b.title), "clay"],
     ["Open questions", (summary?.questions ?? []).map((q) => q.question), "info"],
   ];
-  return <div className="dash-grid">
-    <div className="dash-col">
+  // One column: the page already gives the transcript its own column on the right.
+  return <div className="dash-col">
       {summary?.model === "low-speech-check" ? null : <section className="dashboard-surface">
         <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2>{summary?.model ? <span className="dashboard-count">{summary.model}</span> : null}</div>
         {summary?.short ? <p className="lead">{summary.short}</p> : markdown ? <p className="lead">{markdown.slice(0, 280)}…</p> : <p className="app-muted">No summary for this recording.</p>}
         <button className="dashboard-text-button" type="button" onClick={() => onTab("summary")}>{meeting.kind === "lecture" ? "Read the full notes" : "Read the full summary"} <Icon name="arrow" size={13} /></button>
       </section>}
+      <section className="review-card">
+        <header><span className="chip chip--peach"><Icon name="sparkles" size={12} /> {pending.length + pendingUpdates.length} to review</span></header>
+        <p>{pending.length ? `VOII found ${pending.length} action item${pending.length === 1 ? "" : "s"} in this conversation.` : "No new action items waiting."}{pendingUpdates.length ? ` It also spotted ${pendingUpdates.length} update${pendingUpdates.length === 1 ? "" : "s"} to existing tasks.` : ""} Approve them to put them on a board.</p>
+        {pending.length ? <ul>{pending.slice(0, 3).map((a) => <li key={a.id}><span className="review-card__box" />{a.title}{a.ownerName ? <small>{a.ownerName}</small> : null}</li>)}</ul> : null}
+        <footer><button className="dashboard-primary-button" type="button" onClick={() => onTab("action-items")}>Review all <Icon name="arrow" size={14} /></button></footer>
+      </section>
       {highlights.some(([, list]) => list.length) ? <section className="dashboard-surface">
         <div className="dashboard-section-heading"><h2>Highlights</h2></div>
         {highlights.filter(([, list]) => list.length).map(([label, list, tone]) => <div key={label} className="highlight">
@@ -206,14 +246,6 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
           <ol>{list.map((t, i) => <li key={i}><span className="mono">{String(i + 1).padStart(2, "0")}</span>{t}</li>)}</ol>
         </div>)}
       </section> : null}
-    </div>
-    <div className="dash-col">
-      <section className="review-card">
-        <header><span className="chip chip--peach"><Icon name="sparkles" size={12} /> {pending.length + pendingUpdates.length} to review</span></header>
-        <p>{pending.length ? `VOII found ${pending.length} action item${pending.length === 1 ? "" : "s"} in this conversation.` : "No new action items waiting."}{pendingUpdates.length ? ` It also spotted ${pendingUpdates.length} update${pendingUpdates.length === 1 ? "" : "s"} to existing tasks.` : ""} Approve them to put them on a board.</p>
-        {pending.length ? <ul>{pending.slice(0, 3).map((a) => <li key={a.id}><span className="review-card__box" />{a.title}{a.ownerName ? <small>{a.ownerName}</small> : null}</li>)}</ul> : null}
-        <footer><button className="dashboard-primary-button" type="button" onClick={() => onTab("action-items")}>Review all <Icon name="arrow" size={14} /></button></footer>
-      </section>
       {speakers.length ? <section className="dashboard-surface">
         <div className="dashboard-section-heading"><h2>Speakers</h2></div>
         <div className="dash-rows">{speakers.map((s) => <div key={s.name} className="dash-row">
@@ -222,18 +254,23 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
           <span className="mono app-muted">{s.share}%</span>
         </div>)}</div>
       </section> : null}
-    </div>
   </div>;
 }
 
-function TranscriptTab({ meeting, segments, speakers }: { meeting: MeetingDetail; segments: Segment[]; speakers: SpeakerStat[] }) {
+function TranscriptPanel({ meeting, segments, live }: { meeting: MeetingDetail; segments: Segment[]; live: boolean }) {
   const [q, setQ] = useState("");
+  const listRef = useRef<HTMLOListElement>(null);
   const shown = q ? segments.filter((s) => s.text.toLowerCase().includes(q.toLowerCase()) || s.speaker.toLowerCase().includes(q.toLowerCase())) : segments;
   const mark = (text: string) => {
     if (!q) return text;
     const parts = text.split(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
     return parts.map((p, i) => (p.toLowerCase() === q.toLowerCase() ? <mark key={i}>{p}</mark> : p));
   };
+  // Live: follow the conversation, unless the reader has scrolled up to read.
+  useEffect(() => {
+    const el = listRef.current;
+    if (live && el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight;
+  }, [segments.length, live]);
   function download() {
     const txt = segments.map((s) => `[${formatClock(s.startSec)}] ${s.speaker}: ${s.text}`).join("\n");
     const a = document.createElement("a");
@@ -242,29 +279,69 @@ function TranscriptTab({ meeting, segments, speakers }: { meeting: MeetingDetail
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  if (!segments.length) return <p className="app-muted">No transcript for this recording.</p>;
-  return <div className="split">
-    <section className="dashboard-surface">
-      <div className="list-toolbar">
-        <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the transcript" aria-label="Search transcript" /></label>
-        <button className="dashboard-quiet-button" type="button" onClick={download}><Icon name="download" size={15} />Download .txt</button>
-      </div>
-      <ol className="transcript">
-        {shown.map((s) => <li key={s.id} className="tline">
-          <span className="mono tline__time">{formatClock(s.startSec)}</span>
-          <span className="dashboard-avatar">{initialsOf(s.speaker)}</span>
-          <div><span className="tline__speaker">{s.speaker}</span><p>{mark(s.text)}</p></div>
-        </li>)}
-        {q && !shown.length ? <li className="app-muted">No lines match “{q}”.</li> : null}
-      </ol>
-    </section>
-    <aside className="dash-col">
-      <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>Speakers</h2></div>
-        <div className="dash-rows">{speakers.map((s) => <div key={s.name} className="dash-row"><span className="dashboard-avatar">{initialsOf(s.name)}</span><span className="dash-row__main"><strong>{s.name}</strong><small>{s.share}% · {formatClock(s.secs)}</small></span></div>)}</div>
-      </section>
-    </aside>
-  </div>;
+  return <aside className="dashboard-surface mtg-side" aria-label="Transcript">
+    <div className="dashboard-section-heading">
+      <h2>{live ? <><span className="live-dot" aria-hidden="true" />Live transcript</> : "Transcript"}</h2>
+      {segments.length ? <button className="dashboard-text-button" type="button" onClick={download}><Icon name="download" size={14} />.txt</button> : null}
+    </div>
+    {segments.length ? <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search what was said" aria-label="Search transcript" /></label> : null}
+    <ol className="transcript mtg-side__list" ref={listRef} aria-live={live ? "polite" : undefined}>
+      {shown.map((s) => <li key={s.id} className="tline">
+        <span className="mono tline__time">{formatClock(s.startSec)}</span>
+        <span className="dashboard-avatar">{initialsOf(s.speaker)}</span>
+        <div><span className="tline__speaker">{s.speaker}</span><p>{mark(s.text)}</p></div>
+      </li>)}
+      {!segments.length ? <li className="app-muted">{live ? "Listening… lines appear here as people speak." : "No transcript for this recording."}</li> : null}
+      {q && segments.length && !shown.length ? <li className="app-muted">No lines match “{q}”.</li> : null}
+    </ol>
+  </aside>;
+}
+
+/** Ask about this meeting — mid-call it answers from what has been said so far. */
+function AskPanel({ meetingId, live }: { meetingId: string; live: boolean }) {
+  const [question, setQuestion] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [thread, setThread] = useState<Array<{ q: string; a?: string; error?: string }>>([]);
+  async function ask(e: FormEvent) {
+    e.preventDefault();
+    const q = question.trim();
+    if (q.length < 2 || busy) return;
+    setQuestion("");
+    setBusy(true);
+    setThread((t) => [...t, { q }]);
+    try {
+      const { answer } = await askMeeting(meetingId, q);
+      setThread((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, a: answer } : x)));
+    } catch (err) {
+      setThread((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, error: msg(err) } : x)));
+    } finally { setBusy(false); }
+  }
+  return <section className="dashboard-surface mtg-ask" aria-label="Ask about this meeting">
+    {thread.length ? <ol className="mtg-ask__thread">{thread.map((t, i) => <li key={i}>
+      <p className="mtg-ask__q">{t.q}</p>
+      {t.a ? <p className="mtg-ask__a">{t.a}</p> : t.error ? <p className="app-error">{t.error}</p> : <p className="app-muted">Thinking…</p>}
+    </li>)}</ol> : null}
+    <form method="post" className="ai-input" onSubmit={ask}>
+      <Icon name="sparkles" size={17} />
+      <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={live ? "Ask about what’s being said…" : "Ask about this meeting…"} aria-label="Ask about this meeting" maxLength={500} />
+      <button className="dashboard-primary-button" type="submit" disabled={busy || question.trim().length < 2}>{busy ? "…" : "Ask"}</button>
+    </form>
+  </section>;
+}
+
+/** One small pill that says where the meeting is: live, waiting, processing, ready. */
+function MeetingState({ botStatus, meetingStatus, working }: { botStatus: string | null; meetingStatus: string; working: boolean }) {
+  const [label, tone] =
+    botStatus && LIVE.has(botStatus) ? ["Live — recording", "live"]
+    : botStatus === "joining" ? ["Joining the call", "wait"]
+    : botStatus === "scheduled" ? ["Notetaker scheduled", "wait"]
+    : botStatus === "leaving" ? ["Wrapping up", "wait"]
+    : working ? ["Processing recording", "wait"]
+    : DONE.has(meetingStatus) ? ["Ready", "ok"]
+    : meetingStatus === "failed" || botStatus === "failed" ? ["Failed", "bad"]
+    : botStatus === "recording_ready" || botStatus === "processing_queued" || botStatus === "left" ? ["Processing recording", "wait"]
+    : ["Not recorded yet", "idle"];
+  return <span className={`mstate mstate--${tone}`}>{tone === "live" ? <span className="live-dot" aria-hidden="true" /> : null}{label}</span>;
 }
 
 function SummaryTab({ meeting, summary, markdown, onShare }: { meeting: MeetingDetail; summary: Summary | null; markdown: string; onShare: () => void }) {

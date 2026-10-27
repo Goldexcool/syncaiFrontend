@@ -62,7 +62,7 @@ export const createMeetingFull = (payload: {
 export const getProcessingStatus = (id: string) => apiClient.get<ProcessingStatus>(`/meetings/${id}/processing-status`);
 export const reprocessMeeting = (id: string) => apiClient.post(`/meetings/${id}/reprocess`, {});
 export const getSummary = (id: string) => apiClient.get<{ summary: Summary | null }>(`/meetings/${id}/summary`);
-export const getTranscript = (id: string) => apiClient.get<{ segments: Segment[] }>(`/meetings/${id}/transcript?page=1&limit=500`);
+export const getTranscript = (id: string) => apiClient.get<{ segments: Segment[] }>(`/meetings/${id}/transcript?page=1&limit=2000`);
 
 /** Signed URL → PUT the file → tell the API it landed (which queues processing). */
 export async function uploadRecording(meetingId: string, file: Blob, fileName: string, onProgress?: (fraction: number) => void) {
@@ -116,6 +116,7 @@ export const createCourse = (payload: { name: string; code?: string; lecturer?: 
 export const sendBot = (meetingId: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/join`, { botName });
 export const scheduleBot = (meetingId: string, joinAt: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/schedule`, { joinAt, botName });
 export const setEventBot = (eventId: string, enabled: boolean) => apiClient.patch<{ event: { id: string; botEnabled: boolean; meetingId?: string | null } }>(`/calendar/events/${eventId}/bot`, { enabled });
+export const askMeeting = (meetingId: string, question: string) => apiClient.post<{ answer: string; linesConsidered: number }>(`/meetings/${meetingId}/ask`, { question });
 export const getBotStatus = (meetingId: string) => apiClient.get<{ botSession?: { status: string; failureReason?: string | null } | null }>(`/meetings/${meetingId}/bot/status`);
 
 // ── Sharing ────────────────────────────────────────────────────────────────

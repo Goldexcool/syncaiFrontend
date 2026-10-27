@@ -344,27 +344,14 @@ function MeetingState({ botStatus, meetingStatus, working }: { botStatus: string
   return <span className={`mstate mstate--${tone}`}>{tone === "live" ? <span className="live-dot" aria-hidden="true" /> : null}{label}</span>;
 }
 
-function SummaryTab({ meeting, summary, markdown, onShare }: { meeting: MeetingDetail; summary: Summary | null; markdown: string; onShare: () => void }) {
+function SummaryTab({ meeting, summary, markdown }: { meeting: MeetingDetail; summary: Summary | null; markdown: string; onShare: () => void }) {
   if (!summary) return <p className="app-muted">No summary for this recording.</p>;
   const isLecture = meeting.kind === "lecture";
-  return <div className="split">
-    <div className="dash-col">
-      {!isLecture && summary.short ? <section className="dashboard-surface"><div className="dashboard-section-heading"><h2>TL;DR</h2></div><p className="lead">{summary.short}</p></section> : null}
-      <article className="app-card app-card--paper"><Markdown>{markdown}</Markdown></article>
-    </div>
-    <aside className="dash-col">
-      <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>Share</h2></div>
-        <div className="share-actions">
-          <button className="dashboard-quiet-button" type="button" onClick={onShare}><Icon name="link" size={15} />Create share link</button>
-          <button className="dashboard-quiet-button" type="button" onClick={() => window.print()}><Icon name="download" size={15} />Export as PDF</button>
-        </div>
-      </section>
-      {summary.topics?.length ? <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>Topics</h2></div>
-        <div className="chips">{summary.topics.map((t) => <span key={t} className="chip">{t}</span>)}</div>
-      </section> : null}
-    </aside>
+  // One readable column; Share and Export already sit in the page header.
+  return <div className="dash-col">
+    {!isLecture && summary.short ? <section className="dashboard-surface"><div className="dashboard-section-heading"><h2>TL;DR</h2></div><p className="lead">{summary.short}</p></section> : null}
+    {summary.topics?.length ? <div className="chips">{summary.topics.map((t) => <span key={t} className="chip">{t}</span>)}</div> : null}
+    <article className="app-card app-card--paper"><Markdown>{markdown}</Markdown></article>
   </div>;
 }
 

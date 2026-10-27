@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Newsreader } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -7,6 +7,8 @@ import "./globals.css";
 const newsreader = Newsreader({ subsets: ["latin"], weight: ["300", "400"], style: ["normal", "italic"], variable: "--font-newsreader", display: "swap" });
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
+/** Long-form reading (meeting and lecture notes). */
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 const TITLE = "VOII — Notes that show their work";
 const DESCRIPTION =
@@ -44,7 +46,7 @@ const JSON_LD = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html className={`${newsreader.variable} ${geist.variable} ${geistMono.variable}`} lang="en">
+    <html className={`${newsreader.variable} ${geist.variable} ${geistMono.variable} ${inter.variable}`} lang="en">
       <head>
         <script
           type="application/ld+json"

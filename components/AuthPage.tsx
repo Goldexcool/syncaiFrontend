@@ -103,12 +103,12 @@ export function AuthPageShell({
       </section>
 
       <aside className="av__aside" aria-hidden="true">
-        <p className="av__quote">Sit at the back. <em>Hear the front.</em></p>
+        <p className="av__quote">Every call. <em>On the record.</em></p>
         <div className="av__card">
-          <div className="win__bar"><span>Lectures / MTH 201</span><span className="chip chip--sage"><span className="dot" />Speaker isolated</span></div>
-          <p className="win__title">Integration by parts</p>
-          <div className="formula"><div className="formula__eq">∫ u dv = uv − ∫ v du</div><span className="src">12:04 · stated on the board</span></div>
-          <div className="row-item"><span>Problem set 4 · Q1–9</span><span className="chip chip--peach">Due Fri</span></div>
+          <div className="win__bar"><span>Clients / Retail pilot · weekly call</span><span className="chip chip--sage"><span className="dot" />Linked to source</span></div>
+          <p className="win__title">Pilot launches in Lagos first</p>
+          <div className="formula"><div className="formula__eq">“Start with the Lagos stores, then widen it in January.”</div><span className="src">12:04 · Tolu, client lead</span></div>
+          <div className="row-item"><span>Send revised pricing to Tolu</span><span className="chip chip--peach">Due Fri</span></div>
         </div>
       </aside>
     </main>

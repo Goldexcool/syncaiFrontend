@@ -210,3 +210,26 @@ export const getUsageInfo = () => apiClient.get<UsageInfo>("/workspace/usage");
 export type AiResult = { commandId: string | null; intent: string; requiresConfirmation: boolean; summary: string; plan?: string[]; result?: Record<string, unknown> };
 export const runAiCommand = (command: string) => apiClient.post<AiResult>("/ai/command", { command });
 export const confirmAiCommand = (commandId: string) => apiClient.post<AiResult>(`/ai/command/${commandId}/confirm`, {});
+
+// ── Billing (Bachs checkout) ─────────────────────────────────────────────────
+
+export type Currency = "NGN" | "USD";
+export type Plan = {
+  key: string; name: string; description: string; features: string[]; recommended?: boolean;
+  limits: Record<string, number>;
+  pricing: { customPricing?: boolean } & Partial<Record<Currency, { amount: number; available: boolean }>>;
+};
+export type Subscription = {
+  plan: string; status: string; provider: string | null; providerSubscriptionId: string | null;
+  currentPeriodEnd: string; cancelledAt: string | null;
+};
+export type FullUsage = { plan: string; status: string; usage: Record<string, number>; limits: Record<string, number> };
+
+export const listPlans = () => apiClient.get<{ plans: Plan[] }>("/billing/plans");
+export const getBillingSubscription = () => apiClient.get<{ subscription: Subscription }>("/billing/subscription");
+export const getFullUsage = () => apiClient.get<FullUsage>("/workspace/usage");
+export const startCheckout = (plan: string, currency: Currency) =>
+  apiClient.post<{ checkout: { reference: string; authorizationUrl: string } }>("/billing/checkout", { plan, currency });
+export const verifyCheckout = (reference: string) =>
+  apiClient.get<{ transaction: { status: string; plan: string } | null; subscription: Subscription | null }>(`/billing/checkout/${encodeURIComponent(reference)}`);
+export const cancelPlan = () => apiClient.post<{ subscription: Subscription }>("/billing/cancel", {});

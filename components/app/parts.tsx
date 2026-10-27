@@ -26,7 +26,9 @@ export type DashboardData = {
 };
 
 export function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, isConnectingCalendar }: { data: DashboardData; onConnectCalendar: () => Promise<void>; onDisconnectCalendar: () => Promise<void>; isConnectingCalendar: boolean }) {
-  const plan = typeof data.subscription?.plan === "string" ? data.subscription.plan : "free";
+  // GET /billing/subscription wraps the record: { subscription: {...} }
+  const sub = (data.subscription?.subscription ?? data.subscription) as { plan?: unknown } | null;
+  const plan = typeof sub?.plan === "string" ? sub.plan : "free";
   const calendar = data.integrations.find((integration) => integration.type === "google_calendar");
   const calendarConnected = calendar?.status === "connected";
   return <div className="dashboard-settings-grid">
@@ -40,7 +42,7 @@ export function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, is
       <SectionHeading title="Workspace plan" />
       <div className="dashboard-plan-line"><span className="dashboard-plan-name">{sentenceCase(plan)}</span><span>Current plan</span></div>
       <p className="dashboard-settings-copy">Every plan includes VOII’s core memory engine. Your conversations stay searchable and connected to the work that follows.</p>
-      <Link className="dashboard-outline-button" href="/pricing">Review plans <Icon name="arrow" size={15} /></Link>
+      <Link className="dashboard-outline-button" href="/settings/billing">Plan and billing <Icon name="arrow" size={15} /></Link>
     </section>
     <section className="dashboard-surface">
       <SectionHeading title="Integrations" />

@@ -526,6 +526,20 @@ button { cursor: pointer; }
 .dashboard-plan-line { display: flex; align-items: baseline; gap: 10px; }
 .dashboard-plan-name { font: 300 32px/1 var(--serif); }
 .dashboard-plan-line > span:last-child { color: var(--a-muted); font-size: 13px; }
+.billing-meter { display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px; }
+.billing-meter .dashboard-usage-row { border-bottom: 0; padding-bottom: 0; }
+.billing-meter .progress { height: 4px; }
+.billing-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.billing-plan { display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--r-md); background: var(--a-surface-2); border: 1px solid var(--a-line); }
+.billing-plan.is-current { border-color: var(--a-line-2); }
+.billing-plan__head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.billing-plan__head h3 { font: 400 22px/1.2 var(--serif); letter-spacing: -0.01em; }
+.billing-plan__price { font: 300 32px/1 var(--serif); letter-spacing: -0.02em; }
+.billing-plan__price small { font: 400 13px var(--sans); color: var(--a-muted); letter-spacing: 0; }
+.billing-plan ul { display: flex; flex-direction: column; gap: 8px; flex: 1; font-size: 13px; color: var(--a-muted); }
+.billing-plan li { display: flex; gap: 8px; align-items: flex-start; }
+.billing-plan li svg { flex: none; margin-top: 2px; color: var(--a-sage-text); }
+.billing-plan .dashboard-primary-button, .billing-plan .dashboard-outline-button { align-self: stretch; justify-content: center; }
 .dashboard-integration-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .dashboard-usage-list { display: flex; flex-direction: column; }
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/app/AppShell";
+import { DatePicker, Picker } from "@/components/app/Picker";
 import { ApiRequestError } from "@/lib/api/client";
 import {
   addTaskComment, createBoard, createBoardTask, createProjectQuick, getBoard, getTask, listAllProjects, listBoards, listTaskComments, moveTask, patchTask,
@@ -98,8 +99,8 @@ function BoardView() {
       <header className="kb__head">
         <nav className="kb__crumbs" aria-label="Breadcrumb">
           <span>Projects</span><span aria-hidden="true">/</span>
-          {projects.length > 1 ? <select value={projectId} onChange={(e) => void openProject(e.target.value)} aria-label="Project">{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select> : <span>{project?.name ?? "—"}</span>}
-          {boards.length > 1 ? <><span aria-hidden="true">/</span><select value={board?.id} onChange={(e) => void refresh(e.target.value)} aria-label="Board">{boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></> : null}
+          {projects.length > 1 ? <Picker label="Project" value={projectId} onChange={(v) => void openProject(v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} /> : <span>{project?.name ?? "—"}</span>}
+          {boards.length > 1 ? <><span aria-hidden="true">/</span><Picker label="Board" value={board?.id} onChange={(v) => void refresh(v)} options={boards.map((b) => ({ value: b.id, label: b.name }))} /></> : null}
         </nav>
         <h1>{board?.name ?? "Board"}</h1>
       </header>
@@ -225,9 +226,11 @@ function TaskPanel({ id, board, members, onClose, onChanged, onMove, onError }: 
 
         <dl className="kb__fields">
           <dt>Status</dt>
-          <dd><select value={column?.id} onChange={async (e) => { await onMove(task, e.target.value); onChanged(); }} aria-label="Status">{board.columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></dd>
+          <dd><Picker label="Status" value={column?.id} onChange={async (v) => { await onMove(task, v); onChanged(); }}
+            options={board.columns.map((c, i) => ({ value: c.id, label: c.name, icon: <span className={`status-dot status-dot--${i === board.columns.length - 1 ? "done" : i === 0 ? "todo" : "doing"}`} aria-hidden="true" /> }))} /></dd>
           <dt>Priority</dt>
-          <dd><select value={task.priority ?? "medium"} onChange={(e) => void save({ priority: e.target.value })} aria-label="Priority">{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_GLYPH[p]} {p}</option>)}</select></dd>
+          <dd><Picker label="Priority" value={task.priority ?? "medium"} onChange={(v) => void save({ priority: v })}
+            options={PRIORITIES.map((p) => ({ value: p, label: p[0].toUpperCase() + p.slice(1), icon: <span className={`prio-glyph prio-glyph--${p}`} aria-hidden="true">{PRIORITY_GLYPH[p]}</span> }))} /></dd>
           <dt>Assignees</dt>
           <dd className="kb__assignees">
             {members.length ? members.map((m) => <button key={m.id} type="button" aria-pressed={assigned.has(m.user.id)} className={`kb__person ${assigned.has(m.user.id) ? "is-on" : ""}`}
@@ -236,7 +239,7 @@ function TaskPanel({ id, board, members, onClose, onChanged, onMove, onError }: 
             </button>) : <span className="app-muted">Invite teammates to assign work.</span>}
           </dd>
           <dt>Due</dt>
-          <dd><input type="date" defaultValue={task.dueDate?.slice(0, 10) ?? ""} onChange={(e) => void save({ dueDate: e.target.value ? new Date(e.target.value).toISOString() : null })} aria-label="Due date" /></dd>
+          <dd><DatePicker label="Due date" value={task.dueDate?.slice(0, 10) ?? null} onChange={(v) => void save({ dueDate: v ? new Date(`${v}T12:00:00`).toISOString() : null })} /></dd>
           <dt>Labels</dt>
           <dd><input defaultValue={task.labels?.join(", ") ?? ""} placeholder="design, client" aria-label="Labels" onBlur={(e) => void save({ labels: e.target.value.split(",").map((l) => l.trim()).filter(Boolean) })} /></dd>
           {task.sourceMeetingId ? <><dt>Source</dt><dd><Link className="src kb__srclink" href={`/meetings/${task.sourceMeetingId}`}>◉ From the conversation →</Link></dd></> : null}

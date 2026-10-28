@@ -156,7 +156,7 @@ function ClientsBody() {
 // ── AI Assistant ───────────────────────────────────────────────────────────
 
 const AI_SUGGESTIONS: Array<[string, IconNameish, string[]]> = [
-  ["From your meetings", "sparkles", ["What did we decide this week?", "Summarise what’s blocked across my meetings", "Create tasks from my latest meeting"]],
+  ["From your meetings", "sparkles", ["What did we decide this week?", "What did Ada say about pricing over the last 3 months?", "Create tasks from my latest meeting"]],
   ["For your boards", "board", ["Show me overdue tasks", "Which tasks are in review?", "Move my finished tasks to Done"]],
   ["For your workspace", "home", ["What needs my attention today?", "Who has the most open tasks?"]],
 ];
@@ -244,7 +244,7 @@ function AiResultView({ result }: { result?: Record<string, unknown> }) {
   </Link>)}</div> : <p className="app-muted">Nothing matched.</p>;
   if (meetings) return <div className="dash-rows">{meetings.map((m) => <Link key={m.id} href={`/meetings/${m.id}`} className="dash-row">
     <span className="dash-row__icon"><Icon name="conversation" size={15} /></span>
-    <span className="dash-row__main"><strong>{m.title}</strong>{m.shortSummary ? <small>{m.shortSummary}</small> : null}</span>
+    <span className="dash-row__main"><strong>{m.title}</strong>{m.shortSummary || m.createdAt ? <small>{[m.createdAt && formatDate(m.createdAt), m.shortSummary].filter(Boolean).join(" · ")}</small> : null}</span>
   </Link>)}</div>;
   return null;
 }

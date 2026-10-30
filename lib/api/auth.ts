@@ -143,3 +143,17 @@ export const TOKEN_PATTERN = /^[a-f0-9]{64}$/i;
 export function isWellFormedToken(token: string | null | undefined): token is string {
   return typeof token === "string" && TOKEN_PATTERN.test(token);
 }
+
+export type InviteDetails = {
+  invite: { email: string; role: string; expiresAt: string };
+  workspace: { name: string; slug: string };
+  inviter: { fullName: string | null; email: string };
+};
+
+export function getInvite(token: string) {
+  return apiClient.get<InviteDetails>(`/invitations/${encodeURIComponent(token)}`);
+}
+
+export function acceptInvite(token: string) {
+  return apiClient.post<{ workspace: Workspace }>(`/invitations/${encodeURIComponent(token)}/accept`);
+}

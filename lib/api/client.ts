@@ -22,6 +22,9 @@ export const API_ERROR_CODES = {
   RESET_TOKEN_INVALID: "RESET_TOKEN_INVALID",
 } as const;
 
+/** Window event fired when the API refuses an action because of the plan. */
+export const PLAN_LIMIT_EVENT = "voii:plan-limit";
+
 export class ApiRequestError extends Error {
   readonly status?: number;
   /** Machine-readable code from the API. `NETWORK_ERROR` when the request never landed. */
@@ -365,6 +368,11 @@ export async function request<T>(path: string, init: RequestInit = {}, options: 
       if (error.status === 401 && shouldAttemptRefresh(normalizedPath)) {
         expireSession();
         throw error;
+      }
+
+      // One place for every screen: the app shell shows an upgrade prompt.
+      if (error.code === API_ERROR_CODES.PLAN_LIMIT && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(PLAN_LIMIT_EVENT, { detail: error.message }));
       }
 
       // Temporary failure — back off and try the same request again.

@@ -33,12 +33,6 @@ export function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, is
   const calendarConnected = calendar?.status === "connected";
   return <div className="dashboard-settings-grid">
     <section className="dashboard-surface">
-      <SectionHeading title="Your profile" />
-      <div className="dashboard-settings-row"><span>Name and email</span><strong>Managed from your account</strong></div>
-      <div className="dashboard-settings-row"><span>Notifications</span><strong>In-app notifications are on</strong></div>
-      <p className="dashboard-settings-copy">Profile and password controls stay with your account settings while this workspace keeps the work in view.</p>
-    </section>
-    <section className="dashboard-surface">
       <SectionHeading title="Workspace plan" />
       <div className="dashboard-plan-line"><span className="dashboard-plan-name">{sentenceCase(plan)}</span><span>Current plan</span></div>
       <p className="dashboard-settings-copy">Every plan includes VOII’s core memory engine. Your conversations stay searchable and connected to the work that follows.</p>

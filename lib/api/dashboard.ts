@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api/client";
+import { apiClient, request } from "@/lib/api/client";
 
 export type Pagination = {
   page: number;
@@ -268,4 +268,47 @@ export async function getWorkspaceUsage() {
 
 export async function getSubscription() {
   return apiClient.get<SubscriptionSummary>("/billing/subscription");
+}
+
+// ── Account + members (Settings) ─────────────────────────────────────────────
+
+export function updateProfile(payload: { fullName: string }) {
+  return apiClient.patch<{ user: { fullName: string } }>("/users/me", payload);
+}
+
+export function changePassword(payload: { currentPassword: string; newPassword: string }) {
+  return apiClient.post<unknown>("/users/me/change-password", payload);
+}
+
+/** Soft-deactivates the account. The API wants the password and the word DELETE. */
+export function deleteAccount(password: string) {
+  return request<unknown>("/users/me", { method: "DELETE", body: JSON.stringify({ password, confirm: "DELETE" }) });
+}
+
+export type NotificationPreference = { type: string; channel: "in_app" | "email"; enabled: boolean };
+
+export function getNotificationPreferences() {
+  return apiClient.get<{ preferences: NotificationPreference[] }>("/notifications/preferences");
+}
+
+export function saveNotificationPreferences(preferences: NotificationPreference[]) {
+  return apiClient.put<{ preferences: NotificationPreference[] }>("/notifications/preferences", { preferences });
+}
+
+export type PendingInvite = { id: string; email: string; role: string; expiresAt: string; createdAt: string };
+
+export function listPendingInvites() {
+  return apiClient.get<{ invites: PendingInvite[] }>("/workspaces/me/invites");
+}
+
+export function cancelInvite(inviteId: string) {
+  return apiClient.delete<unknown>(`/workspaces/me/invites/${inviteId}`);
+}
+
+export function updateMemberRole(userId: string, role: "ADMIN" | "MEMBER") {
+  return apiClient.patch<unknown>(`/workspaces/me/members/${userId}`, { role });
+}
+
+export function removeMember(userId: string) {
+  return apiClient.delete<unknown>(`/workspaces/me/members/${userId}`);
 }

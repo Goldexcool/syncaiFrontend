@@ -87,12 +87,13 @@ function NewMeetingBody() {
     { id: "calendar", icon: "calendar", title: "From calendar", sub: "Have it join events from Google Calendar" },
   ];
 
-  return <div className="flow-narrow">
+  return <div className="flow-wide">
     <header className="dashboard-content__header">
       <div><p className="dashboard-location">New meeting</p><h1>Capture a conversation.</h1><p className="dashboard-intro">From a file, a live call, or your calendar. VOII writes it up and suggests the tasks.</p></div>
       <div className="dashboard-content__actions"><button className="dashboard-quiet-button" type="button" onClick={() => router.push("/dashboard")}>Cancel</button></div>
     </header>
 
+    <div className="flow-split"><div className="flow-split__main">
     <div className="method-tiles" role="radiogroup" aria-label="How to capture">
       {tiles.map((t) => <button key={t.id} type="button" role="radio" aria-checked={method === t.id} className={`method-tile ${method === t.id ? "is-active" : ""}`} onClick={() => setMethod(t.id)}>
         <span className="method-tile__icon"><Icon name={t.icon} size={18} /></span>
@@ -120,7 +121,6 @@ function NewMeetingBody() {
           <label className="field span-2"><span>Words it should spell right <small>Comma separated</small></span><input value={newCourse.keyterms} onChange={(e) => setNewCourse({ ...newCourse, keyterms: e.target.value })} placeholder="Dr. Adeyemi, eigenvalue, Laplace" /></label>
         </div> : null}
       </> : null}
-      <NextSteps bot={false} lecture={kind === "lecture"} />
     </section> : null}
 
     {method === "link" ? <section className="dashboard-surface flow-form">
@@ -136,7 +136,6 @@ function NewMeetingBody() {
       {timing === "later" ? <label className="field"><span>Join at</span><input type="datetime-local" value={joinAt} min={new Date(Date.now() + 120000).toISOString().slice(0, 16)} onChange={(e) => setJoinAt(e.target.value)} /></label> : null}
       <label className="field"><span>Notetaker name</span><input value={botName} onChange={(e) => setBotName(e.target.value)} maxLength={80} /><small>Shown to everyone on the call, so its presence is clear.</small></label>
       <label className="consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>I confirm recording this meeting is allowed and everyone on the call will know it’s being recorded.</span></label>
-      <NextSteps bot lecture={false} />
     </section> : null}
 
     {method === "calendar" ? <CalendarPicker onError={setError} /> : null}
@@ -149,6 +148,9 @@ function NewMeetingBody() {
         <button className="dashboard-primary-button" type="button" disabled={!!busy} onClick={() => void submit()}>{busy || (method === "upload" ? "Start processing" : timing === "now" ? "Send notetaker now" : "Schedule notetaker")} <Icon name="arrow" size={14} /></button>
       </div>
     </footer> : null}
+    </div>
+    <aside className="flow-split__aside"><NextSteps bot={method !== "upload"} lecture={method === "upload" && kind === "lecture"} /></aside>
+    </div>
   </div>;
 }
 

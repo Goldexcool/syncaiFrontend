@@ -11,8 +11,11 @@ import { ensureWorkspace, setAutoApprove, setVocabulary, type AutoApprove } from
 import {
   disconnectGoogleCalendar, getGoogleCalendarAuthUrl, getSubscription, getWorkspaceUsage, listClients, listIntegrations, listNotifications, listProjects,
   listTasks, listWorkspaceMembers, markAllNotificationsRead, markNotificationRead, updateTask,
-  type Client, type Notification, type Project, type Task, type WorkspaceMember,
+  updateProfile, changePassword, deleteAccount, getNotificationPreferences, saveNotificationPreferences,
+  listPendingInvites, cancelInvite, updateMemberRole, removeMember,
+  type Client, type Notification, type NotificationPreference, type PendingInvite, type Project, type Task, type WorkspaceMember,
 } from "@/lib/api/dashboard";
+import { useAuth } from "@/components/AuthProvider";
 
 // ── Projects ───────────────────────────────────────────────────────────────
 
@@ -216,10 +219,10 @@ function AiBody() {
       </> : null}
     </section>)}
 
-    {!history.length ? AI_SUGGESTIONS.map(([label, icon, items]) => <div key={label}>
+    {!history.length ? <div className="ai-groups">{AI_SUGGESTIONS.map(([label, icon, items]) => <div key={label}>
       <p className="dashboard-location ai-label"><Icon name={icon} size={13} /> {label}</p>
       <div className="ai-suggestions">{items.map((s) => <button key={s} type="button" className="ai-suggestion" onClick={() => void ask(s)}><Icon name="arrow" size={13} />{s}</button>)}</div>
-    </div>) : null}
+    </div>)}</div> : null}
   </div>;
 }
 
@@ -350,31 +353,198 @@ export function SettingsScreen() {
 
 function SettingsBody() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [busy, setBusy] = useState(false);
-  const [invite, setInvite] = useState(false);
-  const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    Promise.allSettled([getWorkspaceUsage(), getSubscription(), listIntegrations(), listWorkspaceMembers()]).then(([u, s, i, m]) => {
+    Promise.allSettled([getWorkspaceUsage(), getSubscription(), listIntegrations()]).then(([u, s, i]) => {
       setData({ meetings: [], tasks: [], commitments: [], projects: [], events: [], clients: [], members: [], notifications: [], unreadCount: 0,
         usage: u.status === "fulfilled" ? u.value : null, subscription: s.status === "fulfilled" ? s.value : null, integrations: i.status === "fulfilled" ? i.value.integrations ?? [] : [] });
-      if (m.status === "fulfilled") setMembers(m.value.members ?? []);
     });
   }, []);
 
   return <>
-    <header className="dashboard-content__header"><div><p className="dashboard-location">Settings</p><h1>Workspace settings.</h1><p className="dashboard-intro">Plan, integrations, usage and the people in your workspace.</p></div></header>
-    {notice ? <div className="dashboard-alert dashboard-alert--success" role="status"><span>{notice}</span></div> : null}
+    <header className="dashboard-content__header"><div><p className="dashboard-location">Settings</p><h1>Settings.</h1><p className="dashboard-intro">Your account, your workspace, and the people in it.</p></div></header>
+    <div className="dashboard-settings-grid">
+      <ProfileSetting />
+      <PasswordSetting />
+      <MembersSetting />
+      <AutoApproveSetting />
+      <VocabularySetting />
+      <NotificationSetting />
+    </div>
     {data ? <SettingsView data={data} isConnectingCalendar={busy}
       onConnectCalendar={async () => { setBusy(true); try { window.location.assign((await getGoogleCalendarAuthUrl()).authUrl); } catch { setBusy(false); } }}
       onDisconnectCalendar={async () => { setBusy(true); await disconnectGoogleCalendar().catch(() => undefined); setData((d) => d && { ...d, integrations: d.integrations.filter((x) => x.type !== "google_calendar") }); setBusy(false); }} /> : <p className="app-muted">Loading…</p>}
-    <AutoApproveSetting />
-    <VocabularySetting />
-    <section className="dashboard-surface">
-      <SectionHeading title="Members" count={members.length} action="Invite someone" onAction={() => setInvite(true)} />
-      {invite ? <ComposerPanel type="invite" meetings={[]} onClose={() => setInvite(false)} onCreated={(c) => { setInvite(false); if (c.kind === "invite") setNotice(`Invite sent to ${c.email}.`); }} /> : null}
-      <div className="dash-rows">{members.map((m) => <div key={m.id} className="dash-row"><span className="dashboard-avatar">{initials(m.user.fullName, m.user.email)}</span><span className="dash-row__main"><strong>{m.user.fullName || m.user.email}</strong><small>{m.user.email}</small></span><span className="chip">{sentenceCase(m.role)}</span></div>)}</div>
-    </section>
+    <DeleteAccountSetting />
   </>;
+}
+
+function ProfileSetting() {
+  const { user, refreshUser } = useAuth();
+  const [name, setName] = useState(user?.fullName ?? "");
+  const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState("");
+  useEffect(() => { if (user?.fullName) setName(user.fullName); }, [user?.fullName]);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) { setError("Enter your name."); return; }
+    setState("saving"); setError("");
+    try { await updateProfile({ fullName: name.trim() }); await refreshUser().catch(() => undefined); setState("saved"); }
+    catch (err) { setError(getErrorMessage(err)); setState("idle"); }
+  }
+  return <section className="dashboard-surface">
+    <SectionHeading title="Your profile" />
+    <form method="post" className="flow-form" onSubmit={save}>
+      <label className="field"><span>Name</span><input value={name} onChange={(e) => { setName(e.target.value); setState("idle"); }} maxLength={100} autoComplete="name" /></label>
+      <label className="field"><span>Email <small>— can’t be changed here</small></span><input value={user?.email ?? ""} readOnly aria-readonly="true" /></label>
+      {error ? <p className="app-error" role="alert">{error}</p> : null}
+      <div><button className="dashboard-primary-button" type="submit" disabled={state === "saving"}>{state === "saving" ? "Saving…" : state === "saved" ? "Saved" : "Save"}</button></div>
+    </form>
+  </section>;
+}
+
+function PasswordSetting() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState("");
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (next.length < 8) { setError("Use at least 8 characters for the new password."); return; }
+    setState("saving"); setError("");
+    try { await changePassword({ currentPassword: current, newPassword: next }); setCurrent(""); setNext(""); setState("saved"); }
+    catch (err) { setError(getErrorMessage(err)); setState("idle"); }
+  }
+  return <section className="dashboard-surface">
+    <SectionHeading title="Password" />
+    <form method="post" className="flow-form" onSubmit={save}>
+      <label className="field"><span>Current password</span><input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required /></label>
+      <label className="field"><span>New password <small>— at least 8 characters</small></span><input type="password" value={next} onChange={(e) => { setNext(e.target.value); setState("idle"); }} autoComplete="new-password" minLength={8} maxLength={128} required /></label>
+      {error ? <p className="app-error" role="alert">{error}</p> : null}
+      {state === "saved" ? <p className="field-ok" role="status">Password changed.</p> : null}
+      <div><button className="dashboard-primary-button" type="submit" disabled={state === "saving"}>{state === "saving" ? "Changing…" : "Change password"}</button></div>
+    </form>
+  </section>;
+}
+
+function MembersSetting() {
+  const { user, workspace } = useAuth();
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
+  const [inviting, setInviting] = useState(false);
+  const [error, setError] = useState("");
+  const canManage = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
+  const me = user?.id ?? user?.sub;
+
+  const load = () => {
+    listWorkspaceMembers().then((r) => setMembers(r.members ?? [])).catch(() => undefined);
+    if (canManage) listPendingInvites().then((r) => setInvites(r.invites ?? [])).catch(() => undefined);
+  };
+  useEffect(load, [canManage]);
+
+  async function act(fn: () => Promise<unknown>) {
+    setError("");
+    try { await fn(); load(); } catch (err) { setError(getErrorMessage(err)); }
+  }
+
+  return <section className="dashboard-surface">
+    <SectionHeading title="Members" count={members.length} action={canManage ? "Invite someone" : undefined} onAction={canManage ? () => setInviting(true) : undefined} />
+    {inviting ? <ComposerPanel type="invite" meetings={[]} onClose={() => setInviting(false)} onCreated={() => { setInviting(false); load(); }} /> : null}
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+    <div className="dash-rows">
+      {members.map((m) => {
+        const editable = canManage && m.role !== "OWNER" && m.user.id !== me;
+        return <div key={m.id} className="dash-row">
+          <span className="dashboard-avatar">{initials(m.user.fullName, m.user.email)}</span>
+          <span className="dash-row__main"><strong>{m.user.fullName || m.user.email}{m.user.id === me ? " (you)" : ""}</strong><small>{m.user.email}</small></span>
+          {editable ? <>
+            <select className="member-role" aria-label={`Role for ${m.user.fullName || m.user.email}`} value={m.role} onChange={(e) => void act(() => updateMemberRole(m.user.id, e.target.value as "ADMIN" | "MEMBER"))}>
+              <option value="ADMIN">Admin</option><option value="MEMBER">Member</option>
+            </select>
+            <button type="button" className="dashboard-quiet-button" onClick={() => { if (window.confirm(`Remove ${m.user.fullName || m.user.email} from this workspace?`)) void act(() => removeMember(m.user.id)); }}>Remove</button>
+          </> : <span className="chip">{sentenceCase(m.role)}</span>}
+        </div>;
+      })}
+      {invites.map((i) => <div key={i.id} className="dash-row">
+        <span className="dashboard-avatar" aria-hidden="true">@</span>
+        <span className="dash-row__main"><strong>{i.email}</strong><small>Invited as {i.role.toLowerCase()} · expires {formatDate(i.expiresAt)}</small></span>
+        <span className="chip">Pending</span>
+        <button type="button" className="dashboard-quiet-button" onClick={() => void act(() => cancelInvite(i.id))}>Cancel</button>
+      </div>)}
+    </div>
+  </section>;
+}
+
+const NOTIFICATION_LABELS: Record<string, string> = {
+  meeting_processing_completed: "Notes are ready",
+  meeting_processing_failed: "A meeting couldn’t be processed",
+  action_items_ready: "Action items to review",
+  action_items_converted: "Action items sent to a board",
+  task_assigned: "A task is assigned to you",
+  task_comment_added: "Someone comments on your task",
+  task_status_changed: "A task changes status",
+  task_completed: "A task is completed",
+  workspace_invite_accepted: "Someone accepts an invite",
+  workspace_member_joined: "Someone joins the workspace",
+  system_notice: "Notices from VOII",
+  commitment_reminder: "Commitment reminders",
+};
+
+function NotificationSetting() {
+  const [prefs, setPrefs] = useState<NotificationPreference[] | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => { getNotificationPreferences().then((r) => setPrefs(r.preferences)).catch((e) => setError(getErrorMessage(e))); }, []);
+  async function toggle(type: string, channel: NotificationPreference["channel"]) {
+    if (!prefs) return;
+    const prev = prefs;
+    const next = prefs.map((p) => (p.type === type && p.channel === channel ? { ...p, enabled: !p.enabled } : p));
+    setPrefs(next); setError("");
+    try { await saveNotificationPreferences(next.filter((p) => p.type === type && p.channel === channel)); }
+    catch (err) { setPrefs(prev); setError(getErrorMessage(err)); }
+  }
+  const types = prefs ? [...new Set(prefs.map((p) => p.type))] : [];
+  const on = (type: string, channel: string) => prefs?.find((p) => p.type === type && p.channel === channel)?.enabled ?? false;
+  return <section className="dashboard-surface">
+    <SectionHeading title="Notifications" />
+    <p className="app-muted">Choose what reaches you in VOII and by email.</p>
+    {prefs ? <table className="pref-table">
+      <thead><tr><th scope="col">When</th><th scope="col">In app</th><th scope="col">Email</th></tr></thead>
+      <tbody>{types.map((t) => <tr key={t}>
+        <th scope="row">{NOTIFICATION_LABELS[t] ?? sentenceCase(t.replace(/_/g, " "))}</th>
+        <td><input type="checkbox" checked={on(t, "in_app")} onChange={() => void toggle(t, "in_app")} aria-label={`${NOTIFICATION_LABELS[t] ?? t}: in app`} /></td>
+        <td><input type="checkbox" checked={on(t, "email")} onChange={() => void toggle(t, "email")} aria-label={`${NOTIFICATION_LABELS[t] ?? t}: email`} /></td>
+      </tr>)}</tbody>
+    </table> : error ? null : <p className="app-muted">Loading…</p>}
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+  </section>;
+}
+
+function DeleteAccountSetting() {
+  const { logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function remove(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try { await deleteAccount(password); await logout().catch(() => undefined); window.location.assign("/"); }
+    catch (err) { setError(getErrorMessage(err)); setBusy(false); }
+  }
+  return <section className="dashboard-surface danger-zone">
+    <SectionHeading title="Delete account" />
+    <p className="app-muted">Deactivates your account and signs you out everywhere. Workspaces you own stay with their other members.</p>
+    {open ? <form method="post" className="flow-form" onSubmit={remove}>
+      <div className="field-grid">
+        <label className="field"><span>Password</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required /></label>
+        <label className="field"><span>Type DELETE to confirm</span><input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" required /></label>
+      </div>
+      {error ? <p className="app-error" role="alert">{error}</p> : null}
+      <div className="danger-zone__actions">
+        <button className="dashboard-primary-button danger-button" type="submit" disabled={busy || typed !== "DELETE" || !password}>{busy ? "Deleting…" : "Delete my account"}</button>
+        <button className="dashboard-quiet-button" type="button" onClick={() => setOpen(false)}>Keep my account</button>
+      </div>
+    </form> : <div><button className="dashboard-quiet-button" type="button" onClick={() => setOpen(true)}>Delete my account…</button></div>}
+  </section>;
 }

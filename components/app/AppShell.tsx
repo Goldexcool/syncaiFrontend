@@ -9,6 +9,7 @@ import { Logo } from "@/components/SiteHeader";
 import { NotificationPopover } from "@/components/app/parts";
 import { Icon, displayName, initials, type IconName } from "@/components/app/kit";
 import { getUsageInfo, listMeetingsFull, type MeetingDetail, type UsageInfo } from "@/lib/api/app";
+import { PLAN_LIMIT_EVENT } from "@/lib/api/client";
 import { getUnreadNotificationCount, listNotifications, listProjects, markAllNotificationsRead, markNotificationRead, type Notification, type Project } from "@/lib/api/dashboard";
 
 /** The flow's navigation: one place per job, in the order the work happens. */
@@ -37,6 +38,13 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
+  const [planLimit, setPlanLimit] = useState("");
+
+  useEffect(() => {
+    const onLimit = (e: Event) => setPlanLimit((e as CustomEvent<string>).detail || "You’ve reached a limit on your current plan.");
+    window.addEventListener(PLAN_LIMIT_EVENT, onLimit);
+    return () => window.removeEventListener(PLAN_LIMIT_EVENT, onLimit);
+  }, []);
 
   useEffect(() => {
     listMeetingsFull().then((r) => setMeetings(r.meetings)).catch(() => undefined);
@@ -120,7 +128,10 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
           </div>
           {notifOpen ? <NotificationPopover notifications={notifications} onRead={readNotification} onReadAll={async () => { await markAllNotificationsRead().catch(() => undefined); setUnread(0); setNotifications((a) => a.map((n) => ({ ...n, read: true }))); }} onClose={() => setNotifOpen(false)} /> : null}
         </header>
-        <main className={full ? "shell-content shell-content--full" : "dashboard-content"}>{children}</main>
+        <main className={full ? "shell-content shell-content--full" : "dashboard-content"}>
+          {planLimit ? <div className="dashboard-alert plan-limit" role="alert"><span>{planLimit}</span><Link href="/settings/billing" onClick={() => setPlanLimit("")}>See plans →</Link><button type="button" aria-label="Dismiss" onClick={() => setPlanLimit("")}>×</button></div> : null}
+          {children}
+        </main>
       </div>
     </div>
     {paletteOpen ? <CommandPalette meetings={meetings} onClose={() => setPaletteOpen(false)} /> : null}

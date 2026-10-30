@@ -46,11 +46,17 @@ const authContent: Record<AuthMode, { step: string; kicker: string; title: React
 
 const initialForm: FormState = { fullName: "", email: "", password: "" };
 
-function getSafeReturnPath() {
-  if (typeof window === "undefined") return "/dashboard";
+/** The path the user was sent here from, if it is a same-site path. */
+function getReturnTo() {
+  if (typeof window === "undefined") return null;
   const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-  return returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard";
+  return returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : null;
 }
+
+function getSafeReturnPath() {
+  return getReturnTo() ?? "/dashboard";
+}
+
 
 function validateForm(mode: AuthMode, form: FormState) {
   const errors: Record<string, string> = {};
@@ -175,6 +181,13 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [sentTo, setSentTo] = useState("");
   const strength = useMemo(() => strengthOf(form.password), [form.password]);
+  // Read after mount (not during render) so server and client markup match.
+  // Carried across the sign-in / sign-up switch so an invite link survives it.
+  const [returnQuery, setReturnQuery] = useState("");
+  useEffect(() => {
+    const returnTo = getReturnTo();
+    if (returnTo) setReturnQuery(`?returnTo=${encodeURIComponent(returnTo)}`);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -223,8 +236,9 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       if (mode === "login") {
         const data = await loginUser({ email: form.email.trim(), password: form.password });
         setAuth(data);
-        // A workspace may not exist yet — onboarding is what creates it.
-        router.push(data.workspace ? getSafeReturnPath() : "/onboarding");
+        // A workspace may not exist yet — onboarding is what creates it, unless
+        // the user came from an invite link, which joins one instead.
+        router.push(data.workspace || getReturnTo() ? getSafeReturnPath() : "/onboarding");
       } else if (mode === "signup") {
         const data = await registerUser({
           fullName: form.fullName.trim(),
@@ -234,8 +248,9 @@ function AuthForm({ mode }: { mode: AuthMode }) {
         setAuth(data);
         // Registration signs the user in even though the address is unverified,
         // and nothing server-side gates on verification — so they go straight to
-        // onboarding and are nudged about the email by a banner, not a wall.
-        router.push("/onboarding");
+        // onboarding (or back to the invite they came from) and are nudged about
+        // the email by a banner, not a wall.
+        router.push(getReturnTo() ?? "/onboarding");
       } else {
         await forgotPassword(form.email.trim());
         // The API answers identically whether or not the address is registered,
@@ -331,7 +346,7 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       </form>
 
       <div className="auth-form-footer">
-        {mode === "login" ? <p>New to VOII? <Link href="/signup">Create an account</Link></p> : mode === "signup" ? <p>Already have an account? <Link href="/signin">Sign in</Link></p> : <p>Remembered your password? <Link href="/signin">Sign in</Link></p>}
+        {mode === "login" ? <p>New to VOII? <Link href={`/signup${returnQuery}`}>Create an account</Link></p> : mode === "signup" ? <p>Already have an account? <Link href={`/signin${returnQuery}`}>Sign in</Link></p> : <p>Remembered your password? <Link href="/signin">Sign in</Link></p>}
         <span>By continuing, you agree to VOII&apos;s <Link href="/terms">terms</Link> and <Link href="/privacy">privacy policy</Link>.</span>
       </div>
     </div>

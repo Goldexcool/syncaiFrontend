@@ -354,6 +354,13 @@ export function SettingsScreen() {
 function SettingsBody() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [busy, setBusy] = useState(false);
+  const [calendarNotice, setCalendarNotice] = useState<"connected" | "failed" | null>(null);
+
+  // Google sends people back here after the calendar consent screen.
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("calendar");
+    if (c === "connected" || c === "failed") setCalendarNotice(c);
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([getWorkspaceUsage(), getSubscription(), listIntegrations()]).then(([u, s, i]) => {
@@ -363,6 +370,7 @@ function SettingsBody() {
   }, []);
 
   return <>
+    {calendarNotice ? <div className={`dashboard-alert${calendarNotice === "connected" ? " dashboard-alert--success" : ""}`} role="status"><span>{calendarNotice === "connected" ? "Google Calendar is connected. Upcoming calls will show under New meeting → From calendar." : "Google Calendar couldn’t be connected. Try again below."}</span></div> : null}
     <header className="dashboard-content__header"><div><p className="dashboard-location">Settings</p><h1>Settings.</h1><p className="dashboard-intro">Your account, your workspace, and the people in it.</p></div></header>
     <div className="dashboard-settings-grid">
       <ProfileSetting />
@@ -504,7 +512,7 @@ function NotificationSetting() {
   }
   const types = prefs ? [...new Set(prefs.map((p) => p.type))] : [];
   const on = (type: string, channel: string) => prefs?.find((p) => p.type === type && p.channel === channel)?.enabled ?? false;
-  return <section className="dashboard-surface">
+  return <section className="dashboard-surface" id="notifications">
     <SectionHeading title="Notifications" />
     <p className="app-muted">Choose what reaches you in VOII and by email.</p>
     {prefs ? <table className="pref-table">

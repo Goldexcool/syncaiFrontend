@@ -601,7 +601,8 @@ button { cursor: pointer; }
 .app-tabs button { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: none; color: var(--a-muted); font-size: 14px; white-space: nowrap; }
 .app-tabs button.is-active { background: var(--a-invert); color: var(--a-on-invert); }
 .app-tabs button.is-active .chip--peach { color: var(--ink); background: var(--peach); }
-.capture { gap: 28px; }
+/* Meeting page "add a recording" card. Scoped: .capture alone is the homepage email pill. */
+.app-card.capture { max-width: none; margin: 0; border-radius: var(--r-md); background: var(--a-surface); padding: clamp(18px, 3vw, 28px); display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; align-items: start; }
 .capture__row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .capture label.dashboard-quiet-button { cursor: pointer; }
 .rec-on { background: var(--clay) !important; color: var(--a-text) !important; }

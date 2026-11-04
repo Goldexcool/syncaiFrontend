@@ -36,7 +36,18 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   const [tab, setTabState] = useState<Tab>("overview");
   const [error, setError] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
-  const [botStatus, setBotStatus] = useState<string | null>(null);
+  // undefined = not heard from the API yet; null = no notetaker on this meeting.
+  const [botStatus, setBotStatus] = useState<string | null | undefined>(undefined);
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    if (!navigator.onLine) off();
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
@@ -72,10 +83,16 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
         const { botSession } = await getBotStatus(id);
         if (stop) return;
         const next = botSession?.status ?? null;
+        setOffline(false);
         setBotStatus((prev) => { if (prev && BOT_ACTIVE.has(prev) && next && !BOT_ACTIVE.has(next)) void load(); return next; });
         if (next && LIVE.has(next)) setSegments((await getTranscript(id)).segments ?? []);
         if (next && BOT_ACTIVE.has(next)) setTimeout(tick, 3000);
-      } catch { if (!stop) setTimeout(tick, 6000); }
+      } catch (e) {
+        // A dropped connection is not "no notetaker": keep the last known state and retry.
+        if (e instanceof ApiRequestError && e.isNetworkError) setOffline(true);
+        else setBotStatus((prev) => (prev === undefined ? null : prev));
+        if (!stop) setTimeout(tick, 6000);
+      }
     };
     void tick();
     return () => { stop = true; };
@@ -120,7 +137,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
     <header className="mtg-head">
       <div>
         <p className="app-eyebrow">
-          <MeetingState botStatus={botStatus} meetingStatus={meeting.status ?? ""} working={working} />
+          <MeetingState botStatus={botStatus ?? null} meetingStatus={meeting.status ?? ""} working={working} />
           {isLecture ? <span className="chip chip--peach">Lecture</span> : null}
           {meeting.course ? <span>{meeting.course.code ? `${meeting.course.code} · ` : ""}{meeting.course.name}</span> : null}
         </p>
@@ -140,6 +157,14 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
     {shareOpen ? <SharePanel meetingId={id} /> : null}
     {error ? <p className="app-error" role="alert">{error} <button className="dashboard-text-button" type="button" onClick={() => setError("")}>Dismiss</button></p> : null}
 
+    {offline ? <div className="mtg-banner" role="status">
+      <Icon name="refresh" size={18} />
+      <div>
+        <strong>You’re offline. Reconnecting…</strong>
+        <p>If a notetaker is in the call it keeps recording. The transcript catches up when you’re back online.</p>
+      </div>
+    </div> : null}
+
     {working ? <Progress status={status} /> : null}
     {meeting.status === "failed" ? <div className="app-card app-card--clay">
       <p>Processing failed. Your recording is safe.</p>
@@ -153,7 +178,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
       </div>
       <button className="dashboard-primary-button" type="button" onClick={() => void reprocess()}><Icon name="refresh" size={15} />Reprocess</button>
     </div> : null}
-    {!botActive && ["draft", "scheduled", "ready_for_upload"].includes(meeting.status ?? "") ? <Capture meeting={meeting} onQueued={() => setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued…" })} onError={setError} /> : null}
+    {botStatus !== undefined && !botActive && !segments.length && ["draft", "scheduled", "ready_for_upload"].includes(meeting.status ?? "") ? <Capture meeting={meeting} onQueued={() => setStatus({ status: "queued", stage: "queued", progress: 0, message: "Queued…" })} onError={setError} /> : null}
 
     {ready || botActive || segments.length ? <div className="mtg-layout">
       <div className="mtg-main">

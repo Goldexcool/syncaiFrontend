@@ -102,7 +102,7 @@ export function SiteFooter() {
         <p className="site-footer__word" aria-hidden="true">VOII</p>
         <div className="site-footer__base">
           <span>© {new Date().getFullYear()} VOII</span>
-          <a href="mailto:hello@voii.app">hello@voii.app</a>
+          <a href="mailto:hello@usevoii.com">hello@usevoii.com</a>
         </div>
       </div>
     </footer>

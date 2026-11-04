@@ -447,7 +447,7 @@ const DOCS: Record<LegalKind, Doc> = {
     sections: [
       { id: "keep", h: "What VOII keeps", body: ["Recordings, transcripts, notes, tasks and the context around them, so the work can continue after the conversation ends. Your content is used to provide VOII to you — never sold."] },
       { id: "control", h: "Control and deletion", body: ["You can find, export and delete what you keep in VOII, including your whole account. Retention periods, storage regions and subprocessors will be published before general availability."] },
-      { id: "prototype", h: "Before launch", body: ["VOII is in early access. Please don’t upload confidential recordings you are not permitted to share. Questions: hello@voii.app."] },
+      { id: "prototype", h: "Before launch", body: ["VOII is in early access. Please don’t upload confidential recordings you are not permitted to share. Questions: hello@usevoii.com."] },
     ],
   },
   terms: {
@@ -465,7 +465,7 @@ const DOCS: Record<LegalKind, Doc> = {
     title: "Talk to the VOII team.",
     intro: "Product questions, team rollouts, campus partnerships or privacy requests — we read everything.",
     sections: [
-      { id: "start", h: "Email us", body: [<>Write to <a href="mailto:hello@voii.app">hello@voii.app</a> and tell us what you are trying to keep hold of.</>] },
+      { id: "start", h: "Email us", body: [<>Write to <a href="mailto:hello@usevoii.com">hello@usevoii.com</a> and tell us what you are trying to keep hold of.</>] },
     ],
   },
   careers: {
@@ -473,7 +473,7 @@ const DOCS: Record<LegalKind, Doc> = {
     title: "Help build the next layer of VOII.",
     intro: "We care about calm tools, careful engineering, and the moment where talk becomes progress.",
     sections: [
-      { id: "care", h: "Build with care", body: [<>There are no open roles right now. If this resonates, <a href="mailto:hello@voii.app">say hello</a> and tell us what you would build.</>] },
+      { id: "care", h: "Build with care", body: [<>There are no open roles right now. If this resonates, <a href="mailto:hello@usevoii.com">say hello</a> and tell us what you would build.</>] },
     ],
   },
 };

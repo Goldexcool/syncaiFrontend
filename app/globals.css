@@ -1292,3 +1292,25 @@ button { cursor: pointer; }
 .danger-zone { margin-top: 16px; }
 .danger-zone__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .danger-button { background: var(--a-clay-text); }
+
+/* ── Empty states that use the space ─────────────────────────────────────── */
+.start-panel { display: flex; flex-direction: column; gap: 24px; padding: clamp(24px, 4vw, 48px); border-radius: var(--r-md); background: var(--a-surface); border: 1px solid var(--a-line); box-shadow: var(--a-shadow); }
+.start-panel__intro { max-width: 640px; }
+.start-panel__intro h2 { font-family: var(--serif); font-size: clamp(26px, 3vw, 34px); font-weight: 300; letter-spacing: -0.02em; line-height: 1.15; }
+.start-panel__intro p { margin-top: 8px; color: var(--a-muted); font-size: 15px; line-height: 1.55; }
+.start-panel__tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.start-tile { position: relative; display: flex; flex-direction: column; gap: 8px; min-height: 170px; padding: 20px; border-radius: var(--r-md); border: 1px solid var(--a-line); background: var(--a-bg); color: var(--a-text); text-align: left; transition: border-color 0.15s, background 0.15s; }
+.start-tile:hover { border-color: var(--a-text); background: var(--a-surface); }
+.start-tile .dash-row__icon { width: 40px; height: 40px; margin-bottom: 8px; }
+.start-tile strong { font-weight: 500; font-size: 15px; }
+.start-tile small { color: var(--a-muted); font-size: 13px; line-height: 1.5; }
+.start-tile__go { position: absolute; top: 20px; right: 20px; color: var(--a-muted); }
+.start-tile:hover .start-tile__go { color: var(--a-text); }
+.capture-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 16px; align-items: stretch; }
+@media (max-width: 960px) { .capture-grid { grid-template-columns: minmax(0, 1fr); } }
+.capture-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 360px; padding: 32px; border-radius: var(--r-md); border: 1.5px dashed var(--a-line-2); background: var(--a-surface); text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.capture-drop:hover, .capture-drop.is-drag { border-color: var(--a-text); background: var(--a-bg); }
+.capture-drop .dash-row__icon { width: 56px; height: 56px; border-radius: var(--r-md); margin-bottom: 6px; }
+.capture-drop strong { font-family: var(--serif); font-size: 24px; font-weight: 300; letter-spacing: -0.02em; }
+.capture-drop small { max-width: 360px; color: var(--a-muted); font-size: 13.5px; line-height: 1.5; }
+.capture-drop .capture__row { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import AppShell from "@/components/app/AppShell";
 import { Markdown, formatClock, summaryToMarkdown } from "@/components/app/Notes";
-import { Icon, formatDate, formatTime } from "@/components/app/kit";
+import { Icon, formatDate, formatTime, type IconName } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import {
   askMeeting, correctMeeting, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
@@ -655,20 +655,40 @@ function Capture({ meeting, onQueued, onError }: { meeting: MeetingDetail; onQue
     return () => clearInterval(t);
   }, [bot, meeting.id, onQueued]);
 
-  return <div className="app-card capture">
-    {meeting.meetingUrl ? <div>
-      <h2>Send VOII to the call</h2>
-      <p className="app-muted">A notetaker joins <span className="mono">{meeting.meetingUrl}</span>, records, and leaves when the call ends. Tasks wait for your approval before anything reaches the board.</p>
-      {botError ? <div className="bot-error" role="alert"><p className="app-error">{botError}</p><button className="dashboard-quiet-button" type="button" onClick={() => { setBot(null); setBotError(""); }}>Try again</button></div>
-        : bot ? <p className="chip chip--sage" role="status">Notetaker: {bot.replace(/_/g, " ")}</p> : <button className="dashboard-primary-button" type="button" disabled={!!busy} onClick={async () => { try { const r = await sendBot(meeting.id); setBot(r.botSession.status); } catch (e) { onError(msg(e)); } }}>Join the call now →</button>}
-    </div> : null}
-    <div>
-      <h2>{meeting.meetingUrl ? "Or add a recording" : "Add the recording"}</h2>
-      <div className="capture__row">
-        <label className="dashboard-quiet-button">Upload a file<input hidden type="file" accept="audio/*,video/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, f.name); }} /></label>
+  const [drag, setDrag] = useState(false);
+  const steps: Array<[IconName, string]> = [
+    ["conversation", "Transcript, with who said what"],
+    ["sparkles", meeting.kind === "lecture" ? "Study notes, maths included" : "Summary, decisions and open questions"],
+    ["check", "Tasks suggested for your approval"],
+    ["bell", "You’re told when it’s ready"],
+  ];
+
+  return <div className="capture-grid">
+    <label className={`capture-drop ${drag ? "is-drag" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+      onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) void upload(f, f.name); }}>
+      <span className="dash-row__icon"><Icon name="upload" size={22} /></span>
+      <strong>{meeting.meetingUrl ? "Or add the recording yourself" : "Add the recording"}</strong>
+      <small>Drop an audio or video file here — MP3, M4A, WAV, MP4 or WebM, up to 250 MB.</small>
+      <span className="capture__row" onClick={(e) => e.preventDefault()}>
+        <span className="dashboard-quiet-button" role="button" tabIndex={0} onClick={(e) => { const input = (e.currentTarget.closest("label") as HTMLLabelElement).querySelector("input"); input?.click(); }}>Browse files</span>
         <Recorder disabled={!!busy} onDone={(blob) => upload(blob, `recording-${Date.now()}.webm`)} />
-      </div>
-      {busy ? <p className="app-muted" role="status">{busy}</p> : null}
+      </span>
+      <input hidden type="file" accept="audio/*,video/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, f.name); }} />
+      {busy ? <span className="app-muted" role="status">{busy}</span> : null}
+    </label>
+
+    <div className="dash-col">
+      {meeting.meetingUrl ? <section className="dashboard-surface">
+        <div className="dashboard-section-heading"><h2>Send VOII to the call</h2></div>
+        <p className="app-muted">A notetaker joins <span className="mono">{meeting.meetingUrl}</span>, records, and leaves when the call ends. Tasks wait for your approval before anything reaches the board.</p>
+        {botError ? <div className="bot-error" role="alert"><p className="app-error">{botError}</p><button className="dashboard-quiet-button" type="button" onClick={() => { setBot(null); setBotError(""); }}>Try again</button></div>
+          : bot ? <p className="chip chip--sage" role="status">Notetaker: {bot.replace(/_/g, " ")}</p> : <button className="dashboard-primary-button" type="button" disabled={!!busy} onClick={async () => { try { const r = await sendBot(meeting.id); setBot(r.botSession.status); } catch (e) { onError(msg(e)); } }}>Join the call now →</button>}
+      </section> : null}
+      <section className="dashboard-surface">
+        <div className="dashboard-section-heading"><h2>What happens next</h2></div>
+        <div className="dash-rows">{steps.map(([icon, label]) => <div key={label} className="dash-row"><span className="dash-row__icon"><Icon name={icon} size={15} /></span><span className="dash-row__main"><strong>{label}</strong></span></div>)}</div>
+      </section>
     </div>
   </div>;
 }

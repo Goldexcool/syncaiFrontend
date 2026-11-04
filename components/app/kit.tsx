@@ -97,3 +97,20 @@ export function DataLoading({ rows = 3 }: { rows?: number }) {
   return <div className="dashboard-loading-state" aria-label="Loading your workspace" role="status"><span className="dashboard-loading-state__mark" aria-hidden="true" /><p>Bringing your workspace together.</p></div>;
 }
 
+
+export type StartAction = { icon: IconName; title: string; body: string; href?: string; onClick?: () => void };
+
+/** Empty states fill the page with real next steps instead of one small card. */
+export function StartPanel({ title, body, actions }: { title: string; body: string; actions: StartAction[] }) {
+  return <section className="start-panel">
+    <div className="start-panel__intro"><h2>{title}</h2><p>{body}</p></div>
+    <div className="start-panel__tiles">
+      {actions.map((a) => {
+        const inner = <><span className="dash-row__icon"><Icon name={a.icon} size={18} /></span><strong>{a.title}</strong><small>{a.body}</small><span className="start-tile__go" aria-hidden="true"><Icon name="arrow" size={14} /></span></>;
+        return a.href
+          ? <a key={a.title} className="start-tile" href={a.href}>{inner}</a>
+          : <button key={a.title} className="start-tile" type="button" onClick={a.onClick}>{inner}</button>;
+      })}
+    </div>
+  </section>;
+}

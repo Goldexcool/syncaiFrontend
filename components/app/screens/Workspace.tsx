@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "@/components/app/AppShell";
 import PortalPanel from "@/components/app/PortalPanel";
 import { ComposerPanel, SettingsView, type DashboardData } from "@/components/app/parts";
-import { EmptyState, Icon, SectionHeading, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
+import { Icon, SectionHeading, formatDate, getErrorMessage, initials, sentenceCase, StartPanel } from "@/components/app/kit";
 import { confirmAiCommand, listPortals, runAiCommand, type AiResult } from "@/lib/api/app";
 import { ensureWorkspace, setAutoApprove, setVocabulary, type AutoApprove } from "@/lib/api/auth";
 import {
@@ -43,7 +43,11 @@ function ProjectsBody() {
       <div className="dashboard-content__actions"><Link className="dashboard-quiet-button" href="/tasks"><Icon name="check" size={15} />All tasks</Link><button className="dashboard-primary-button" type="button" onClick={() => setComposer(true)}><Icon name="plus" size={15} />New project</button></div>
     </header>
     {composer ? <ComposerPanel type="project" meetings={[]} onClose={() => setComposer(false)} onCreated={(c) => { setComposer(false); if (c.kind === "project") setProjects((p) => [c.item, ...(p ?? [])]); }} /> : null}
-    {projects === null ? <p className="app-muted">Loading…</p> : projects.length === 0 ? <section className="dashboard-surface"><EmptyState title="No projects yet." body="Create one, or approve tasks from a meeting and VOII sets one up." action="New project" onAction={() => setComposer(true)} /></section>
+    {projects === null ? <p className="app-muted">Loading…</p> : projects.length === 0 ? <StartPanel title="No projects yet." body="A project is a board of work. Start one yourself, or let your next meeting create the tasks for you." actions={[
+        { icon: "plus", title: "Create a project", body: "Name it and get a board with To do, In progress, In review and Done.", onClick: () => setComposer(true) },
+        { icon: "conversation", title: "Turn a meeting into tasks", body: "Approve the action items VOII finds and send them to a board.", href: "/meetings" },
+        { icon: "team", title: "Invite your team", body: "Assign tasks to the people who’ll do them.", href: "/settings#members" },
+      ]} />
       : <div className="card-grid">
         {projects.map((p) => {
           const g = prog[p.id] ?? { total: p.taskCount ?? 0, done: 0 };
@@ -86,7 +90,11 @@ function TasksBody() {
     <div className="seg" role="tablist" aria-label="Filter tasks">
       {([["open", "Open"], ["all", "All"], ["done", "Completed"]] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={filter === id} className={filter === id ? "is-active" : ""} onClick={() => setFilter(id)}>{label}{tasks ? <span>{tasks.filter((t) => t.status !== "cancelled" && (id === "all" || (id === "done" ? t.status === "done" : t.status !== "done"))).length}</span> : null}</button>)}
     </div>
-    {tasks === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <section className="dashboard-surface"><EmptyState title="Nothing here." body="Approve action items from a meeting and they show up as tasks." /></section>
+    {tasks === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <StartPanel title={filter === "done" ? "Nothing finished yet." : "Nothing to do — yet."} body="Tasks come from the action items you approve in a meeting, or from your boards." actions={[
+        { icon: "check", title: "Review action items", body: "See what VOII pulled out of your recent meetings.", href: "/meetings" },
+        { icon: "plus", title: "Capture a meeting", body: "Upload a recording or send the notetaker to a call.", href: "/meetings/new" },
+        { icon: "board", title: "Open a board", body: "Add tasks by hand on any project board.", href: "/projects" },
+      ]} />
       : TASK_GROUPS.map(([status, label]) => {
         const list = shown.filter((t) => (t.status ?? "todo") === status);
         return list.length ? <section key={status} className="dashboard-surface">
@@ -132,7 +140,11 @@ function ClientsBody() {
       <div className="dashboard-content__actions"><button className="dashboard-primary-button" type="button" onClick={() => setComposer(true)}><Icon name="plus" size={15} />Add client</button></div>
     </header>
     {composer ? <ComposerPanel type="client" meetings={[]} onClose={() => setComposer(false)} onCreated={(c) => { setComposer(false); if (c.kind === "client") { setClients((all) => [c.item, ...(all ?? [])]); setOpen(c.item.id); } }} /> : null}
-    {clients === null ? <p className="app-muted">Loading…</p> : clients.length === 0 ? <section className="dashboard-surface"><EmptyState title="Bring your clients into the loop." body="Add a client, then share a private link where they see progress and can message you." action="Add your first client" onAction={() => setComposer(true)} /></section>
+    {clients === null ? <p className="app-muted">Loading…</p> : clients.length === 0 ? <StartPanel title="Bring your clients into the loop." body="Each client gets a private link where they follow progress on their project and message your team — no account needed." actions={[
+        { icon: "plus", title: "Add a client", body: "Their name and contact email are enough to start.", onClick: () => setComposer(true) },
+        { icon: "board", title: "Set up their project", body: "The client link shows that project’s board as progress.", href: "/projects" },
+        { icon: "bot", title: "Record the next client call", body: "Send the notetaker; approved tasks show up for them.", href: "/meetings/new?method=link" },
+      ]} />
       : <div className={`clients${open ? " clients--open" : ""}`}>
         <nav className="dashboard-surface clients__list" aria-label="Clients">
           {clients.map((c) => <button key={c.id} type="button" className={`clients__row${selected?.id === c.id ? " is-active" : ""}`} aria-current={selected?.id === c.id ? "true" : undefined} onClick={() => setOpen(c.id)}>
@@ -276,8 +288,12 @@ function InboxBody() {
       <div className="dashboard-content__actions"><button className="dashboard-quiet-button" type="button" onClick={async () => { await markAllNotificationsRead().catch(() => undefined); setItems((all) => all?.map((n) => ({ ...n, read: true })) ?? null); }}><Icon name="check" size={15} />Mark all read</button></div>
     </header>
     <div className="seg">{(["all", "unread"] as const).map((f) => <button key={f} type="button" className={filter === f ? "is-active" : ""} onClick={() => setFilter(f)}>{f === "all" ? "All" : "Unread"}<span>{f === "all" ? items?.length ?? 0 : items?.filter((n) => !n.read).length ?? 0}</span></button>)}</div>
-    <section className="dashboard-surface">
-      {items === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <EmptyState title="You’re all caught up." body="New meeting notes, tasks and client messages show up here." />
+    <section className={items && !shown.length ? "" : "dashboard-surface"}>
+      {items === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <StartPanel title="You’re all caught up." body="Meeting notes, task changes and client messages show up here as they happen." actions={[
+        { icon: "upload", title: "Upload a recording", body: "Get notes and suggested tasks in a few minutes.", href: "/meetings/new?method=upload" },
+        { icon: "bot", title: "Send the notetaker", body: "Paste a Meet, Zoom or Teams link.", href: "/meetings/new?method=link" },
+        { icon: "sparkles", title: "Ask the assistant", body: "“What did we decide this week?”", href: "/ai" },
+      ]} />
         : <div className="dash-rows">{shown.map((n) => <button key={n.id} type="button" className={`inbox-row ${n.read ? "" : "is-unread"}`} onClick={() => void open(n)}>
           <span className="dash-row__icon"><Icon name={n.type.includes("meeting") ? "conversation" : n.type.includes("task") ? "check" : n.type.includes("action") ? "sparkles" : "bell"} size={15} /></span>
           <span className="dash-row__main"><strong>{n.title}</strong><small>{n.message}</small></span>

@@ -354,12 +354,17 @@ export function SettingsScreen() {
 function SettingsBody() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [busy, setBusy] = useState(false);
-  const [calendarNotice, setCalendarNotice] = useState<"connected" | "failed" | null>(null);
+  const [calendarNotice, setCalendarNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Google sends people back here after the calendar consent screen.
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get("calendar");
-    if (c === "connected" || c === "failed") setCalendarNotice(c);
+    const q = new URLSearchParams(window.location.search);
+    const reason = q.get("reason");
+    if (q.get("calendar") === "connected") setCalendarNotice({ ok: true, text: "Google Calendar is connected. Your upcoming calls show under New meeting → From calendar." });
+    else if (q.get("calendar") === "failed") setCalendarNotice({ ok: false, text:
+      reason === "access_denied" ? "Google Calendar wasn’t connected: access was declined. If you didn’t cancel, this Google account may not be allowed to use VOII’s calendar access yet."
+      : reason === "expired" ? "That Google sign-in took too long. Connect again below."
+      : "Google Calendar couldn’t be connected. Try again below." });
   }, []);
 
   useEffect(() => {
@@ -370,7 +375,7 @@ function SettingsBody() {
   }, []);
 
   return <>
-    {calendarNotice ? <div className={`dashboard-alert${calendarNotice === "connected" ? " dashboard-alert--success" : ""}`} role="status"><span>{calendarNotice === "connected" ? "Google Calendar is connected. Upcoming calls will show under New meeting → From calendar." : "Google Calendar couldn’t be connected. Try again below."}</span></div> : null}
+    {calendarNotice ? <div className={`dashboard-alert${calendarNotice.ok ? " dashboard-alert--success" : ""}`} role="status"><span>{calendarNotice.text}</span></div> : null}
     <header className="dashboard-content__header"><div><p className="dashboard-location">Settings</p><h1>Settings.</h1><p className="dashboard-intro">Your account, your workspace, and the people in it.</p></div></header>
     <div className="dashboard-settings-grid">
       <ProfileSetting />

@@ -8,7 +8,7 @@ import { formatClock } from "@/components/app/Notes";
 import { Icon, displayName, formatDate, formatTime, type IconName } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import { createCourse, createMeetingFull, listCourses, scheduleBot, sendBot, setEventBot, uploadRecording, type Course, type MeetingKind } from "@/lib/api/app";
-import { listCalendarEvents, type CalendarEvent } from "@/lib/api/dashboard";
+import { listCalendarEvents, syncCalendarNow, type CalendarEvent } from "@/lib/api/dashboard";
 
 type Method = "upload" | "link" | "calendar";
 const msg = (e: unknown) => (e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : "Something went wrong.");
@@ -222,7 +222,18 @@ function NextSteps({ bot, lecture }: { bot: boolean; lecture: boolean }) {
 /** Calendar events: switch the notetaker on per event; it joins at start time. */
 function CalendarPicker({ onError }: { onError: (m: string) => void }) {
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
-  useEffect(() => { listCalendarEvents(20).then((r) => setEvents(r.events ?? [])).catch(() => setEvents([])); }, []);
+  const [syncing, setSyncing] = useState(false);
+  const load = () => listCalendarEvents(20).then((r) => setEvents(r.events ?? [])).catch(() => setEvents([]));
+
+  // Show what we have at once, then pull fresh events from Google — nothing else re-syncs,
+  // so a call booked after connecting would otherwise never appear.
+  async function refresh() {
+    setSyncing(true);
+    try { await syncCalendarNow(); await load(); }
+    catch (e) { if (!(e instanceof ApiRequestError && e.code === "CALENDAR_NOT_CONNECTED")) onError(msg(e)); }
+    finally { setSyncing(false); }
+  }
+  useEffect(() => { void load(); void refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function toggle(ev: CalendarEvent) {
     try {
@@ -232,8 +243,10 @@ function CalendarPicker({ onError }: { onError: (m: string) => void }) {
   }
 
   if (events === null) return <p className="app-muted">Loading your calendar…</p>;
-  if (!events.length) return <section className="dashboard-surface"><p>No upcoming events. Connect Google Calendar in <a className="dashboard-text-button" href="/settings">Settings</a> and your calls with a Meet, Zoom or Teams link show up here.</p></section>;
+  const header = <div className="dashboard-section-heading"><p className="app-muted">{syncing ? "Checking Google Calendar for new events…" : "Upcoming events from Google Calendar."}</p><button className="dashboard-text-button" type="button" disabled={syncing} onClick={() => void refresh()}><Icon name="refresh" size={14} />{syncing ? "Refreshing…" : "Refresh"}</button></div>;
+  if (!events.length) return <section className="dashboard-surface">{header}<p>No upcoming events. If Google Calendar isn’t connected yet, connect it in <a className="dashboard-text-button" href="/settings">Settings</a>; calls with a Meet, Zoom or Teams link show up here.</p></section>;
   return <section className="dashboard-surface">
+    {header}
     <div className="dash-rows">
       {events.map((ev) => <div key={ev.id} className="dash-event">
         <span className="dash-event__date"><small>{formatDate(ev.startAt, { weekday: "short" })}</small><strong>{new Date(ev.startAt).getDate()}</strong></span>

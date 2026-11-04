@@ -312,3 +312,14 @@ export function updateMemberRole(userId: string, role: "ADMIN" | "MEMBER") {
 export function removeMember(userId: string) {
   return apiClient.delete<unknown>(`/workspaces/me/members/${userId}`);
 }
+
+/** Pull fresh events from Google. Resolves when the worker finishes (or after ~20s). */
+export async function syncCalendarNow() {
+  const { jobId } = await apiClient.post<{ jobId: string }>("/calendar/sync", {});
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const { status } = await apiClient.get<{ status: { status: string } | null }>(`/calendar/sync/status/${jobId}`);
+    if (status && ["completed", "failed"].includes(status.status)) return status.status;
+  }
+  return "pending";
+}

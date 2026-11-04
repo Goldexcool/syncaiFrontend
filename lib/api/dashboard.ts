@@ -54,23 +54,6 @@ export type Task = {
   assignees?: Array<{ user: PersonReference; assignedAt?: string }>;
 };
 
-export type Commitment = {
-  id: string;
-  title: string;
-  description?: string | null;
-  status?: "open" | "in_progress" | "done" | "overdue" | "blocked" | "cancelled" | string | null;
-  priority?: "low" | "medium" | "high" | "urgent" | string | null;
-  dueDate?: string | null;
-  meetingId?: string | null;
-  projectId?: string | null;
-  clientId?: string | null;
-  evidenceText?: string | null;
-  createdByAi?: boolean;
-  project?: { id: string; name: string } | null;
-  client?: { id: string; name: string; companyName?: string | null } | null;
-  ownerUser?: PersonReference | null;
-};
-
 export type Project = {
   id: string;
   name: string;
@@ -137,9 +120,6 @@ export type Notification = {
   taskId?: string | null;
 };
 
-export type UsageSummary = Record<string, unknown>;
-export type SubscriptionSummary = Record<string, unknown> | null;
-
 function queryString(values: Record<string, string | number | undefined>) {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
@@ -147,12 +127,6 @@ function queryString(values: Record<string, string | number | undefined>) {
   });
   const result = params.toString();
   return result ? `?${result}` : "";
-}
-
-export async function listMeetings(limit = 8) {
-  return apiClient.get<{ meetings: Meeting[]; pagination: Pagination }>(
-    `/meetings${queryString({ page: 1, limit, sortBy: "updatedAt", sortOrder: "desc" })}`,
-  );
 }
 
 export async function createMeeting(payload: {
@@ -186,16 +160,6 @@ export async function createTask(payload: {
   sourceMeetingId?: string;
 }) {
   return apiClient.post<{ task: Task }>("/tasks", payload);
-}
-
-export async function listCommitments(limit = 8) {
-  return apiClient.get<{ commitments: Commitment[]; pagination: Pagination }>(
-    `/commitments${queryString({ page: 1, limit, sortBy: "dueDate", sortOrder: "asc" })}`,
-  );
-}
-
-export async function updateCommitmentStatus(id: string, status: string) {
-  return apiClient.post<{ commitment: Commitment }>(`/commitments/${id}/status`, { status });
 }
 
 export async function listProjects(limit = 8) {
@@ -260,14 +224,6 @@ export async function getGoogleCalendarAuthUrl() {
 
 export async function disconnectGoogleCalendar() {
   return apiClient.delete<void>("/integrations/google-calendar");
-}
-
-export async function getWorkspaceUsage() {
-  return apiClient.get<UsageSummary>("/workspace/usage");
-}
-
-export async function getSubscription() {
-  return apiClient.get<SubscriptionSummary>("/billing/subscription");
 }
 
 // ── Account + members (Settings) ─────────────────────────────────────────────

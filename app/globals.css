@@ -518,7 +518,6 @@ button { cursor: pointer; }
 .dashboard-empty-state h3 { font: 400 20px/1.25 var(--serif); }
 .dashboard-empty-state p { color: var(--a-muted); max-width: 420px; font-size: 14px; }
 .dashboard-loading-state { display: flex; align-items: center; gap: 12px; padding: 48px 0; color: var(--a-muted); }
-.dashboard-inline-error { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(0, 0, 0, 0.08); color: #f0b8a3; font-size: 13px; }
 .dashboard-settings-row, .dashboard-usage-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--a-line); font-size: 14px; }
 .dashboard-settings-row span, .dashboard-usage-row span { color: var(--a-muted); }
 .dashboard-settings-row strong, .dashboard-usage-row strong { font-weight: 500; }
@@ -540,7 +539,6 @@ button { cursor: pointer; }
 .billing-plan li { display: flex; gap: 8px; align-items: flex-start; }
 .billing-plan li svg { flex: none; margin-top: 2px; color: var(--a-sage-text); }
 .billing-plan .dashboard-primary-button, .billing-plan .dashboard-outline-button { align-self: stretch; justify-content: center; }
-.dashboard-integration-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .dashboard-usage-list { display: flex; flex-direction: column; }
 
 .dashboard-composer { border-radius: var(--r-md); background: var(--a-surface); border: 1px solid var(--a-line-2); padding: 24px; }
@@ -1289,9 +1287,46 @@ button { cursor: pointer; }
 .pref-table thead th { border-top: 0; color: var(--a-muted); font-size: 12.5px; }
 .pref-table td, .pref-table thead th + th { width: 64px; text-align: center; }
 .pref-table input { width: 16px; height: 16px; accent-color: var(--a-invert); }
-.danger-zone { margin-top: 16px; }
 .danger-zone__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .danger-button { background: var(--a-clay-text); }
+.danger-outline { color: var(--a-clay-text); border-color: currentColor; }
+
+/* Settings: section index on the left; each section = intro beside its card. */
+.settings { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; align-items: start; }
+.settings__nav { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 20px; }
+.settings__nav-group { display: flex; flex-direction: column; gap: 2px; }
+.settings__nav-label { font-size: 12px; color: var(--a-muted); padding: 0 12px 6px; }
+.settings__nav a { display: block; padding: 7px 12px; border-radius: var(--r-sm); font-size: 14px; color: var(--a-muted); }
+.settings__nav a:hover { color: var(--a-text); background: var(--a-surface-2); }
+.settings__nav a.is-active { color: var(--a-text); background: var(--a-surface); box-shadow: inset 0 0 0 1px var(--a-line); font-weight: 500; }
+.settings__body { display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+.settings-section { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 32px; scroll-margin-top: 88px; }
+/* Sections may be wrapped in a <form>, so the divider goes on the body's children. */
+.settings__body > * + * { padding-top: 40px; border-top: 1px solid var(--a-line); }
+.settings-section__intro h2 { font-size: 17px; font-weight: 500; font-family: inherit; letter-spacing: 0; }
+.settings-section__intro p { margin-top: 6px; font-size: 13.5px; line-height: 1.55; color: var(--a-muted); }
+.settings-card { border-radius: var(--r-md); background: var(--a-surface); border: 1px solid var(--a-line); min-width: 0; overflow: hidden; }
+.settings-card__body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.settings-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; border-top: 1px solid var(--a-line); background: var(--a-bg); font-size: 13px; }
+.settings-card__footer > :last-child { margin-left: auto; }
+.settings-card__footer .app-error, .settings-card__footer .field-ok { font-size: 13px; }
+.settings-section--danger .settings-card { border-color: color-mix(in srgb, var(--a-clay-text) 35%, transparent); }
+.settings-section--danger .settings-section__intro h2 { color: var(--a-clay-text); }
+.settings-field--narrow { max-width: 420px; }
+.settings .field small { font-weight: 400; color: var(--a-muted); font-size: 12.5px; }
+.settings-list { list-style: none; display: flex; flex-direction: column; }
+.settings-list li { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--a-line); }
+.settings-list li:first-child { border-top: 0; padding-top: 0; }
+.settings-list li:last-child { padding-bottom: 0; }
+.settings-list__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.settings-list__main strong { font-weight: 500; font-size: 14px; }
+.settings-list__main small { color: var(--a-muted); font-size: 13px; overflow-wrap: anywhere; }
+.settings-list__actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.settings-list__icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--a-bg); border: 1px solid var(--a-line); flex: none; }
+.settings-plan__name { font-family: var(--serif); font-size: 26px; display: flex; align-items: center; gap: 10px; }
+.settings-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 24px; }
+@media (max-width: 1100px) { .settings { grid-template-columns: minmax(0, 1fr); gap: 24px; } .settings__nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 4px; } .settings__nav-group { flex-direction: row; flex-wrap: wrap; } .settings__nav-label { display: none; } }
+@media (max-width: 860px) { .settings-section { grid-template-columns: minmax(0, 1fr); gap: 14px; } .settings-list li { flex-wrap: wrap; } .settings-list__actions { width: 100%; justify-content: flex-end; } }
 
 /* ── Empty states that use the space ─────────────────────────────────────── */
 .start-panel { display: flex; flex-direction: column; gap: 24px; padding: clamp(24px, 4vw, 48px); border-radius: var(--r-md); background: var(--a-surface); border: 1px solid var(--a-line); box-shadow: var(--a-shadow); }

@@ -1,61 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { EmptyState, Icon, SectionHeading, formatDate, getErrorMessage, sentenceCase } from "@/components/app/kit";
-import { createMeeting, createClient, createProject, createTask, inviteWorkspaceMember, type Client, type Commitment, type Integration, type Meeting, type Notification, type Project, type SubscriptionSummary, type Task, type UsageSummary, type WorkspaceMember, type CalendarEvent } from "@/lib/api/dashboard";
+import { Icon, formatDate, getErrorMessage } from "@/components/app/kit";
+import { createMeeting, createClient, createProject, createTask, inviteWorkspaceMember, type Client, type Meeting, type Notification, type Project, type Task } from "@/lib/api/dashboard";
 
 
-/* Pieces shared by the app screens: create forms, settings, notifications. */
+/* Pieces shared by the app screens: create forms and notifications. */
 
 export type Composer = "meeting" | "task" | "project" | "client" | "invite" | null;
-
-export type DashboardData = {
-  meetings: Meeting[];
-  tasks: Task[];
-  commitments: Commitment[];
-  projects: Project[];
-  events: CalendarEvent[];
-  clients: Client[];
-  members: WorkspaceMember[];
-  notifications: Notification[];
-  unreadCount: number;
-  usage: UsageSummary | null;
-  subscription: SubscriptionSummary;
-  integrations: Integration[];
-};
-
-export function SettingsView({ data, onConnectCalendar, onDisconnectCalendar, isConnectingCalendar }: { data: DashboardData; onConnectCalendar: () => Promise<void>; onDisconnectCalendar: () => Promise<void>; isConnectingCalendar: boolean }) {
-  // GET /billing/subscription wraps the record: { subscription: {...} }
-  const sub = (data.subscription?.subscription ?? data.subscription) as { plan?: unknown } | null;
-  const plan = typeof sub?.plan === "string" ? sub.plan : "free";
-  const calendar = data.integrations.find((integration) => integration.type === "google_calendar");
-  const calendarConnected = calendar?.status === "connected";
-  return <div className="dashboard-settings-grid">
-    <section className="dashboard-surface">
-      <SectionHeading title="Workspace plan" />
-      <div className="dashboard-plan-line"><span className="dashboard-plan-name">{sentenceCase(plan)}</span><span>Current plan</span></div>
-      <p className="dashboard-settings-copy">Every plan includes VOII’s core memory engine. Your conversations stay searchable and connected to the work that follows.</p>
-      <Link className="dashboard-outline-button" href="/settings/billing">Plan and billing <Icon name="arrow" size={15} /></Link>
-    </section>
-    <section className="dashboard-surface">
-      <SectionHeading title="Integrations" />
-      <div className="dashboard-integration-row"><div><h3>Google Calendar</h3><p>{calendarConnected ? calendar?.externalEmail || "Connected" : "Bring meetings into the same view as your work."}</p></div><button className={calendarConnected ? "dashboard-quiet-button" : "dashboard-primary-button"} type="button" onClick={() => void (calendarConnected ? onDisconnectCalendar() : onConnectCalendar())} disabled={isConnectingCalendar}>{isConnectingCalendar ? "Working…" : calendarConnected ? "Disconnect" : "Connect"}</button></div>
-    </section>
-    <section className="dashboard-surface dashboard-surface--full"><SectionHeading title="Usage" /><UsageSummary usage={data.usage} /></section>
-  </div>;
-}
-
-export function UsageSummary({ usage }: { usage: UsageSummary | null }) {
-  if (!usage) return <EmptyState title="Usage is not available." body="We could not read your current usage. Refresh the workspace to try again." />;
-  const entries = Object.entries(usage).filter(([, value]) => typeof value === "string" || typeof value === "number").slice(0, 5);
-  if (entries.length === 0) return <EmptyState title="Your usage will appear here." body="As you capture conversations and create work, VOII will keep the workspace limits visible." />;
-  return <div className="dashboard-usage-list">{entries.map(([key, value]) => <div className="dashboard-usage-row" key={key}><span>{sentenceCase(key)}</span><strong>{String(value)}</strong></div>)}</div>;
-}
-
-export function InlineError({ message }: { message: string }) {
-  return <div className="dashboard-inline-error" role="status"><span>{message}</span><Icon name="refresh" size={14} /></div>;
-}
 
 export function NotificationPopover({ notifications, onRead, onReadAll, onClose }: { notifications: Notification[]; onRead: (notification: Notification) => Promise<void>; onReadAll: () => Promise<void>; onClose: () => void }) {
   return <div className="dashboard-notification-popover" role="dialog" aria-label="Notifications"><div className="dashboard-notification-popover__header"><strong>Notifications</strong><button className="dashboard-icon-button" type="button" onClick={onClose} aria-label="Close notifications"><Icon name="close" size={16} /></button></div>{notifications.length === 0 ? <p className="dashboard-notification-empty">Nothing new here.</p> : <div className="dashboard-notification-list">{notifications.map((notification) => <button className={`dashboard-notification-row ${notification.read ? "is-read" : ""}`} key={notification.id} type="button" onClick={() => void onRead(notification)}><span className="dashboard-notification-dot" aria-hidden="true" /><span><strong>{notification.title}</strong><small>{notification.message}</small><time>{formatDate(notification.createdAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time></span></button>)}</div>}<button className="dashboard-notification-popover__footer" type="button" onClick={() => void onReadAll()}>Mark all as read</button></div>;

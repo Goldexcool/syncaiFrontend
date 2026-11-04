@@ -127,8 +127,6 @@ export const getBotStatus = (meetingId: string) => apiClient.get<{ botSession?: 
 
 export const createShare = (meetingId: string, payload: { includeTranscript: boolean; includeTasks: boolean; expiresAt?: string }) =>
   apiClient.post<{ share: Share }>(`/meetings/${meetingId}/share`, payload);
-export const listShares = (meetingId: string) => apiClient.get<{ shares: Share[] }>(`/meetings/${meetingId}/shares`);
-export const revokeShare = (meetingId: string, shareId: string) => apiClient.delete(`/meetings/${meetingId}/shares/${shareId}`);
 
 // ── Client portal ──────────────────────────────────────────────────────────
 

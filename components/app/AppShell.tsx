@@ -110,11 +110,12 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
 
         <div className="dashboard-sidebar__bottom">
           <Link className={`dashboard-nav-item ${pathname.startsWith("/settings") ? "is-active" : ""}`} href="/settings"><Icon name="settings" size={17} /><span>Settings</span></Link>
+          <button className="dashboard-nav-item" type="button" onClick={async () => { await logout(); window.location.assign("/signin"); }}><Icon name="external" size={17} /><span>Sign out</span></button>
           {usage && usage.limits.meetingsPerMonth > 0 && usage.limits.meetingsPerMonth < 1e6 ? <div className="shell-usage">
             <div><span>Meetings this month</span><strong>{usage.usage.meetingsCreated} / {usage.limits.meetingsPerMonth}</strong></div>
             <div className="progress"><span style={{ width: `${Math.min(100, meetingsPct ?? 0)}%` }} /></div>
           </div> : null}
-          <div className="dashboard-sidebar__footer"><span className="dashboard-avatar">{initials(user?.fullName, user?.email)}</span><span className="min-w-0"><strong>{displayName(user?.fullName, user?.email)}</strong><small>{workspace?.name ?? user?.email}</small></span><button className="dashboard-icon-button" type="button" onClick={async () => { await logout(); window.location.assign("/signin"); }} aria-label="Sign out"><Icon name="external" size={15} /></button></div>
+          <div className="dashboard-sidebar__footer"><span className="dashboard-avatar">{initials(user?.fullName, user?.email)}</span><span className="min-w-0"><strong>{displayName(user?.fullName, user?.email)}</strong><small>{workspace?.name ?? user?.email}</small></span></div>
         </div>
       </aside>
 

@@ -1,6 +1,6 @@
 # VOII — launch TODO
 
-Updated 2026-10-30, after checking the live Render service (`syncaibackend`), the Render env vars, R2, and the app at 1440px and 375px.
+Updated 2026-11-05. Earlier checks on 2026-10-30, after checking the live Render service (`syncaibackend`), the Render env vars, R2, and the app at 1440px and 375px.
 Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync` (`backend-revamp`, already in `origin/main`).
 **[needs you]** = needs a key, an account, a payment or a decision from you.
 
@@ -12,6 +12,14 @@ Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync`
 - [x] Layout: New meeting, AI assistant and Inbox were capped at a centred 760px column. They now use the full width. New meeting puts the form beside a "What happens next" panel, and the AI suggestions show as three columns. Checked at 1440px, with no sideways scroll at 375px. (`app/globals.css`, `NewMeeting.tsx`)
 - [x] Frontend security headers: frame deny, nosniff, referrer policy, HSTS, permissions policy. (`next.config.ts`)
 - [x] Rate limit on the public client-portal message and access endpoints. (`sync/apps/api/src/middleware/rateLimit.middleware.ts`, `modules/portals/portal.routes.ts`)
+
+## 2026-11-05 production findings
+
+- **Two backends are in use.** Browsers call `syncaibackend-jvrm` directly, but `usevoii.com/api/*` proxies (`VOII_API_PROXY_TARGET`) to `syncaibackend-qrhb`, a sleeping service that isn't in the Render account the CLI uses. Google's calendar callback goes through that proxy; a test of that path timed out after 40s while `jvrm` answered directly. **[needs you]** approve pointing the proxy at `jvrm`.
+- **The worker never ran on `jvrm`.** Render's dashboard start command is `node dist/server.js`, so recordings and calendar sync stayed queued. The API now starts the worker itself in production (`EMBED_WORKER=false` turns that off). Committed, not deployed.
+- **Recall has no dashboard webhook endpoints.** A timer in the API now polls unfinished bots every minute, so meetings finish with no browser open. No Recall setup needed.
+- Local test: a real 10-minute recording went through transcription, summary and action items to `pending_review`. The download step wasn't covered because this machine's connection to Recall is too slow, so the first production run needs checking. It also hasn't confirmed `STORAGE_PROVIDER` or R2 on Render.
+- [x] Client portal, Sign out row, transcript turns and alignment: committed, not deployed.
 
 ## Blockers for launch
 

@@ -254,7 +254,7 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
   // One column: the page already gives the transcript its own column on the right.
   return <div className="dash-col">
       {summary?.model === "low-speech-check" ? null : <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2>{summary?.model ? <span className="dashboard-count">{summary.model}</span> : null}</div>
+        <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2></div>
         {summary?.short ? <p className="lead">{summary.short}</p> : markdown ? <p className="lead">{markdown.slice(0, 280)}…</p> : <p className="app-muted">No summary for this recording.</p>}
         <button className="dashboard-text-button" type="button" onClick={() => onTab("summary")}>{meeting.kind === "lecture" ? "Read the full notes" : "Read the full summary"} <Icon name="arrow" size={13} /></button>
       </section>}
@@ -300,6 +300,12 @@ function TranscriptPanel({ meeting, segments, live, onCorrected, onError }: { me
   }
   const listRef = useRef<HTMLOListElement>(null);
   const shown = q ? segments.filter((s) => s.text.toLowerCase().includes(q.toLowerCase()) || s.speaker.toLowerCase().includes(q.toLowerCase())) : segments;
+  // Consecutive lines from one person read as one turn.
+  const turns: Segment[][] = [];
+  for (const s of shown) {
+    const last = turns.at(-1);
+    if (last?.[0].speaker === s.speaker) last.push(s); else turns.push([s]);
+  }
   const mark = (text: string) => {
     if (!q) return text;
     const parts = text.split(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
@@ -347,15 +353,17 @@ function TranscriptPanel({ meeting, segments, live, onCorrected, onError }: { me
     </form> : null}
     {segments.length ? <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search what was said" aria-label="Search transcript" /></label> : null}
     <ol className="transcript mtg-side__list" ref={listRef} aria-live={live ? "polite" : undefined}>
-      {shown.map((s) => <li key={s.id} className="tline">
-        <span className="mono tline__time">{formatClock(s.startSec)}</span>
-        <span className="dashboard-avatar">{initialsOf(s.speaker)}</span>
-        <div>
-          {renaming?.from === s.speaker ? <form method="post" className="tp-rename" onSubmit={(e) => { e.preventDefault(); if (renaming.to.trim() && renaming.to.trim() !== s.speaker) void correct({ kind: "speaker", from: s.speaker, to: renaming.to.trim() }); }}>
-            <input autoFocus value={renaming.to} onChange={(e) => setRenaming({ ...renaming, to: e.target.value })} aria-label={`Rename ${s.speaker}`} onKeyDown={(e) => e.key === "Escape" && setRenaming(null)} />
-            <button className="dashboard-text-button" type="submit" disabled={busy}>Rename</button>
-          </form> : <button type="button" className="tline__speaker" title="Rename this speaker everywhere in the meeting" disabled={live} onClick={() => setRenaming({ from: s.speaker, to: s.speaker })}>{s.speaker}</button>}
-          <p>{mark(s.text)}</p>
+      {turns.map((turn) => <li key={turn[0].id} className="tline">
+        <span className="dashboard-avatar">{initialsOf(turn[0].speaker)}</span>
+        <div className="tline__body">
+          <div className="tline__head">
+            {renaming?.from === turn[0].speaker ? <form method="post" className="tp-rename" onSubmit={(e) => { e.preventDefault(); if (renaming.to.trim() && renaming.to.trim() !== renaming.from) void correct({ kind: "speaker", from: renaming.from, to: renaming.to.trim() }); }}>
+              <input autoFocus value={renaming.to} onChange={(e) => setRenaming({ ...renaming, to: e.target.value })} aria-label={`Rename ${renaming.from}`} onKeyDown={(e) => e.key === "Escape" && setRenaming(null)} />
+              <button className="dashboard-text-button" type="submit" disabled={busy}>Rename</button>
+            </form> : <button type="button" className="tline__speaker" title="Rename this speaker everywhere in the meeting" disabled={live} onClick={() => setRenaming({ from: turn[0].speaker, to: turn[0].speaker })}>{turn[0].speaker}</button>}
+            <span className="mono tline__time">{formatClock(turn[0].startSec)}</span>
+          </div>
+          {turn.map((s) => <p key={s.id}>{mark(s.text)}</p>)}
         </div>
       </li>)}
       {!segments.length ? <li className="app-muted">{live ? "Listening… lines appear here as people speak." : "No transcript for this recording."}</li> : null}

@@ -138,7 +138,7 @@ export const replyToPortal = (portalId: string, comment: string) => apiClient.po
 
 // ── Public (no session) ────────────────────────────────────────────────────
 
-const noAuth = (path: string, init?: RequestInit) => request(path, { ...init, credentials: "omit" });
+const noAuth = (path: string, init?: RequestInit) => request(path, { ...init, credentials: "omit" }, { auth: false });
 
 export type PublicPortal = {
   portal: { slug: string; client: { name: string; companyName?: string | null }; project?: { name: string } | null };

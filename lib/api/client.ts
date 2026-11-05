@@ -92,6 +92,11 @@ export type RequestOptions = {
   retry?: boolean;
   /** Retry attempts after the first try. Defaults to 2 for GET, 0 otherwise. */
   maxRetries?: number;
+  /**
+   * False for public pages (client portal, shared notes): no session token,
+   * and a 401 never touches the visitor's own VOII session.
+   */
+  auth?: boolean;
 };
 
 const configuredApiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
@@ -265,8 +270,8 @@ async function performRequest<T>(path: string, init: RequestInit = {}, includeAu
   let response: Response;
   try {
     response = await fetch(`${getApiBaseUrl()}${normalizedPath}`, {
-      ...init,
       credentials: "include",
+      ...init,
       headers,
     });
   } catch {
@@ -345,18 +350,19 @@ export async function request<T>(path: string, init: RequestInit = {}, options: 
   const isRead = method === "GET" || method === "HEAD";
   const retryEnabled = options.retry ?? isRead;
   const maxRetries = options.maxRetries ?? (retryEnabled ? DEFAULT_GET_RETRIES : 0);
+  const includeAuth = options.auth !== false;
 
   let attempt = 0;
 
   for (;;) {
     try {
-      return await performRequest<T>(normalizedPath, init);
+      return await performRequest<T>(normalizedPath, init, includeAuth);
     } catch (error) {
       if (!(error instanceof ApiRequestError)) {
         throw new ApiRequestError("Something went wrong on our end. Please try again shortly.");
       }
 
-      if (shouldRefreshForError(error) && shouldAttemptRefresh(normalizedPath)) {
+      if (includeAuth && shouldRefreshForError(error) && shouldAttemptRefresh(normalizedPath)) {
         const refreshedToken = await tryRefreshAccessToken();
         if (refreshedToken) {
           return performRequest<T>(normalizedPath, init);
@@ -365,7 +371,7 @@ export async function request<T>(path: string, init: RequestInit = {}, options: 
         throw error;
       }
 
-      if (error.status === 401 && shouldAttemptRefresh(normalizedPath)) {
+      if (includeAuth && error.status === 401 && shouldAttemptRefresh(normalizedPath)) {
         expireSession();
         throw error;
       }

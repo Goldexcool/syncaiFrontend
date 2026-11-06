@@ -73,14 +73,13 @@ export default function Onboarding() {
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
 
-  async function setUp(e: FormEvent) {
-    e.preventDefault();
+  async function setUp(skip = false) {
     if (!type) return;
     setBusy(true); setError("");
     try {
       if (type === "student") {
         await renameWorkspace(`${user?.fullName?.split(" ")[0] ?? "My"}’s notes`);
-        if (name.trim()) await createCourse({ name: name.trim(), code: extra.trim() || undefined });
+        if (!skip && name.trim()) await createCourse({ name: name.trim(), code: extra.trim() || undefined });
       } else {
         await renameWorkspace(name.trim());
         if (type === "agency" && extra.trim()) await createClient({ name: extra.trim() });
@@ -117,7 +116,7 @@ export default function Onboarding() {
 
     {step === 1 && type ? <>
       <h1>{type === "student" ? "What’s your first course?" : type === "team" ? "Name your team." : "Name your company."}</h1>
-      <form method="post" className="onb__form" onSubmit={setUp} noValidate>
+      <form method="post" className="onb__form" onSubmit={(e: FormEvent) => { e.preventDefault(); void setUp(); }} noValidate>
         {type === "student" ? <>
           <div className="auth-field"><label htmlFor="onb-name">Course name</label><input id="onb-name" autoFocus maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="Organic Chemistry" /></div>
           <div className="auth-field"><label htmlFor="onb-extra">Course code (optional)</label><input id="onb-extra" maxLength={40} value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="CHM 201" /></div>
@@ -128,7 +127,7 @@ export default function Onboarding() {
         </>}
         {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
         <div className="onb__foot">
-          {type === "student" ? <button className="workspace-entry-page__link" type="submit" disabled={busy} onClick={() => { setName(""); setExtra(""); }}>Skip for now</button> : <span />}
+          {type === "student" ? <button className="workspace-entry-page__link" type="button" disabled={busy} onClick={() => void setUp(true)}>Skip for now</button> : <span />}
           <button className="workspace-entry-page__continue" type="submit" disabled={busy || (type !== "student" && name.trim().length < 2)} aria-busy={busy}>{busy ? "Saving…" : "Continue"}<span aria-hidden="true">→</span></button>
         </div>
       </form>

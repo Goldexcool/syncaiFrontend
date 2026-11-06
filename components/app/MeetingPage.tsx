@@ -21,7 +21,7 @@ const DONE = new Set(["pending_review", "tasks_created", "completed"]);
 const LIVE = new Set(["joined", "recording"]);
 const BOT_ACTIVE = new Set(["scheduled", "joining", "joined", "recording", "leaving"]);
 const msg = (e: unknown) => (e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : "Something went wrong.");
-type Tab = "overview" | "summary" | "study" | "action-items" | "tasks";
+type Tab = "notes" | "study" | "tasks";
 
 export default function MeetingPage({ id }: { id: string }) {
   const [title, setTitle] = useState("Meeting");
@@ -36,7 +36,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   const [segments, setSegments] = useState<Segment[]>([]);
   const [items, setItems] = useState<ActionItem[]>([]);
   const [updates, setUpdates] = useState<TaskUpdateSuggestion[]>([]);
-  const [tab, setTabState] = useState<Tab>("overview");
+  const [tab, setTabState] = useState<Tab>("notes");
   const [error, setError] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   // undefined = not heard from the API yet; null = no notetaker on this meeting.
@@ -54,7 +54,9 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["overview", "summary", "study", "action-items", "tasks"].includes(t)) setTabState(t as Tab);
+    // Old links still say action-items.
+    if (t === "action-items" || t === "tasks") setTabState("tasks");
+    else if (t === "study") setTabState("study");
   }, []);
   const setTab = (t: Tab) => { setTabState(t); window.history.replaceState(null, "", `?tab=${t}`); };
 
@@ -189,34 +191,31 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
         {ready ? <>
           <nav className="tabs" role="tablist" aria-label="Meeting sections">
             {([
-              ["overview", "Overview", "home"],
-              ["summary", isLecture ? "Notes" : "Summary", "sparkles"],
+              ["notes", "Notes", "sparkles"],
               ...(studying ? [["study", "Study", "knowledge"] as const] : []),
-              ["action-items", "Action items", "check"],
-              ["tasks", "Tasks", "board"],
+              ["tasks", "Tasks", "check"],
             ] as const).map(([value, label, icon]) => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
               <Icon name={icon} size={15} />{label}
-              {value === "action-items" && pendingItems ? <span className="tabs__count">{pendingItems}</span> : null}
+              {value === "tasks" && pendingItems ? <span className="tabs__count">{pendingItems}</span> : null}
             </button>)}
           </nav>
 
-          {tab === "overview" ? <Overview meeting={meeting} summary={summary} items={items} updates={updates} speakers={speakers} markdown={markdown} onTab={setTab} onCorrected={load} /> : null}
-          {tab === "summary" ? <SummaryTab meeting={meeting} summary={summary} markdown={markdown} onShare={() => setShareOpen(true)} /> : null}
+          {tab === "notes" ? <NotesTab meeting={meeting} summary={summary} pending={pendingItems} markdown={markdown} onTab={setTab} onCorrected={load} /> : null}
           {tab === "study" ? <StudyTools meetingId={id} /> : null}
-          {tab === "action-items" ? <>
+          {tab === "tasks" ? <>
             <BoardUpdates meetingId={id} updates={updates} setUpdates={setUpdates} onError={setError} />
             <ActionItemsReview meetingId={id} items={items} setItems={setItems} onError={setError} />
+            <MeetingTasks meetingId={id} />
           </> : null}
-          {tab === "tasks" ? <MeetingTasks meetingId={id} /> : null}
         </> : <section className="dashboard-surface mtg-livecard">
           <h2>{live ? "The meeting is happening now." : "Waiting for the notetaker."}</h2>
           <p className="app-muted">{live
-            ? "The conversation appears on the right as people speak. Ask anything below — answers use what has been said so far. Notes, action items and the full transcript arrive when the call ends."
+            ? "The conversation appears on the right as people speak. Notes and suggested tasks arrive when the call ends."
             : "Once someone admits VOII Notetaker into the call, the conversation will start appearing on the right."}</p>
           {speakers.length ? <p className="app-muted">{speakers.length} speaker{speakers.length === 1 ? "" : "s"} so far: {speakers.map((sp) => sp.name).join(", ")}</p> : null}
         </section>}
 
-        <AskPanel meetingId={id} live={live} />
+        {tab === "tasks" && ready ? null : <AskPanel meetingId={id} live={live} />}
       </div>
       <TranscriptPanel meeting={meeting} segments={segments} live={live} onCorrected={load} onError={setError} />
     </div> : null}
@@ -230,7 +229,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
       </header>
       <Markdown>{markdown}</Markdown>
       {items.filter((i) => i.status !== "rejected").length ? <>
-        <h2>Action items</h2>
+        <h2>Tasks</h2>
         <ul>{items.filter((i) => i.status !== "rejected").map((i) => <li key={i.id}>{i.title}{i.ownerName ? ` — ${i.ownerName}` : ""}{i.dueDate ? ` (due ${new Date(i.dueDate).toLocaleDateString()})` : ""}</li>)}</ul>
       </> : null}
       <footer>Notes that show their work · usevoii.com</footer>
@@ -282,45 +281,21 @@ function CorrectNotes({ meetingId, onCorrected }: { meetingId: string; onCorrect
   </form>;
 }
 
-function Overview({ meeting, summary, items, updates, speakers, markdown, onTab, onCorrected }: {
-  meeting: MeetingDetail; summary: Summary | null; items: ActionItem[]; updates: TaskUpdateSuggestion[]; speakers: SpeakerStat[]; markdown: string; onTab: (t: Tab) => void; onCorrected: () => Promise<void>;
+function NotesTab({ meeting, summary, pending, markdown, onTab, onCorrected }: {
+  meeting: MeetingDetail; summary: Summary | null; pending: number; markdown: string; onTab: (t: Tab) => void; onCorrected: () => Promise<void>;
 }) {
-  const pending = items.filter((i) => i.status === "pending_review");
-  const pendingUpdates = updates.filter((u) => u.state === "pending");
-  const highlights: Array<[string, string[], string]> = [
-    ["Decisions", (summary?.decisions ?? []).map((d) => d.title), "sage"],
-    ["Blockers", (summary?.blockers ?? []).map((b) => b.title), "clay"],
-    ["Open questions", (summary?.questions ?? []).map((q) => q.question), "info"],
-  ];
-  // One column: the page already gives the transcript its own column on the right.
+  if (!summary) return <p className="app-muted">No notes for this recording.</p>;
   return <div className="dash-col">
-      {summary?.model === "low-speech-check" ? null : <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2></div>
-        {summary?.short ? <p className="lead">{summary.short}</p> : markdown ? <p className="lead">{markdown.slice(0, 280)}…</p> : <p className="app-muted">No summary for this recording.</p>}
-        <button className="dashboard-text-button" type="button" onClick={() => onTab("summary")}>{meeting.kind === "lecture" ? "Read the full notes" : "Read the full summary"} <Icon name="arrow" size={13} /></button>
-        {summary ? <CorrectNotes meetingId={meeting.id} onCorrected={onCorrected} /> : null}
-      </section>}
-      <section className="review-card">
-        <header><span className="chip chip--peach"><Icon name="sparkles" size={12} /> {pending.length + pendingUpdates.length} to review</span></header>
-        <p>{pending.length ? `VOII found ${pending.length} action item${pending.length === 1 ? "" : "s"} in this conversation.` : "No new action items waiting."}{pendingUpdates.length ? ` It also spotted ${pendingUpdates.length} update${pendingUpdates.length === 1 ? "" : "s"} to existing tasks.` : ""} Approve them to put them on a board.</p>
-        {pending.length ? <ul>{pending.slice(0, 3).map((a) => <li key={a.id}><span className="review-card__box" />{a.title}{a.ownerName ? <small>{a.ownerName}</small> : null}</li>)}</ul> : null}
-        <footer><button className="dashboard-primary-button" type="button" onClick={() => onTab("action-items")}>Review all <Icon name="arrow" size={14} /></button></footer>
-      </section>
-      {highlights.some(([, list]) => list.length) ? <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>Highlights</h2></div>
-        {highlights.filter(([, list]) => list.length).map(([label, list, tone]) => <div key={label} className="highlight">
-          <p className={`highlight__label tone-${tone}`}>{label} <span>{list.length}</span></p>
-          <ol>{list.map((t, i) => <li key={i}><span className="mono">{String(i + 1).padStart(2, "0")}</span>{t}</li>)}</ol>
-        </div>)}
-      </section> : null}
-      {speakers.length ? <section className="dashboard-surface">
-        <div className="dashboard-section-heading"><h2>Speakers</h2></div>
-        <div className="dash-rows">{speakers.map((s) => <div key={s.name} className="dash-row">
-          <span className="dashboard-avatar">{initialsOf(s.name)}</span>
-          <span className="dash-row__main"><strong>{s.name}</strong><small>{formatClock(s.secs)} talking</small></span>
-          <span className="mono app-muted">{s.share}%</span>
-        </div>)}</div>
-      </section> : null}
+    {pending ? <section className="review-card">
+      <p><strong>{pending} suggested task{pending === 1 ? "" : "s"}</strong> from this {meeting.kind === "lecture" ? "lecture" : "meeting"} need{pending === 1 ? "s" : ""} review.</p>
+      <footer><button className="dashboard-primary-button" type="button" onClick={() => onTab("tasks")}>Review tasks <Icon name="arrow" size={14} /></button></footer>
+    </section> : null}
+    {summary.model === "low-speech-check" ? null : <article className="dashboard-surface">
+      {summary.short ? <p className="lead">{summary.short}</p> : null}
+      {summary.topics?.length ? <div className="chips">{summary.topics.map((t) => <span key={t} className="chip">{t}</span>)}</div> : null}
+      <Markdown>{markdown}</Markdown>
+      <CorrectNotes meetingId={meeting.id} onCorrected={onCorrected} />
+    </article>}
   </div>;
 }
 
@@ -461,17 +436,6 @@ function MeetingState({ botStatus, meetingStatus, working }: { botStatus: string
   return <span className={`mstate mstate--${tone}`}>{tone === "live" ? <span className="live-dot" aria-hidden="true" /> : null}{label}</span>;
 }
 
-function SummaryTab({ meeting, summary, markdown }: { meeting: MeetingDetail; summary: Summary | null; markdown: string; onShare: () => void }) {
-  if (!summary) return <p className="app-muted">No summary for this recording.</p>;
-  const isLecture = meeting.kind === "lecture";
-  // One readable column; Share and Export already sit in the page header.
-  return <div className="dash-col">
-    {!isLecture && summary.short ? <section className="dashboard-surface"><div className="dashboard-section-heading"><h2>TL;DR</h2></div><p className="lead">{summary.short}</p></section> : null}
-    {summary.topics?.length ? <div className="chips">{summary.topics.map((t) => <span key={t} className="chip">{t}</span>)}</div> : null}
-    <article className="app-card app-card--paper"><Markdown>{markdown}</Markdown></article>
-  </div>;
-}
-
 type Draft = ActionItem;
 
 /** The review: nothing becomes a task until a person approves it, then picks where it lives. */
@@ -508,12 +472,12 @@ function ActionItemsReview({ meetingId, items, setItems, onError }: { meetingId:
     return order.map((k) => [k, open.filter((i) => key(i) === k)] as [string, Draft[]]).filter(([, l]) => l.length);
   }, [open, groupBy]);
 
-  if (!items.length) return <section className="dashboard-surface"><p className="app-muted">VOII didn’t find any action items in this recording.</p></section>;
+  if (!items.length) return <section className="dashboard-surface"><p className="app-muted">VOII didn’t suggest any tasks from this recording.</p></section>;
 
   return <div className="review">
     <div className="review-bar">
       <span className="dash-row__icon"><Icon name="sparkles" size={16} /></span>
-      <span className="dash-row__main"><strong>Suggested by VOII</strong><small>Approve, edit or dismiss each one. Approved items become tasks on a board.</small></span>
+      <span className="dash-row__main"><strong>Suggested tasks</strong><small>Approve, edit or dismiss each one, then send them to a board.</small></span>
       <span className="review-dots" aria-label={`${approved.length} approved, ${rejected.length} dismissed, ${pending.length} left`}>{open.map((i) => <span key={i.id} className={`review-dot is-${i.status}`} />)}</span>
       <div className="seg">{(["order", "owner", "priority"] as const).map((g) => <button key={g} type="button" className={groupBy === g ? "is-active" : ""} onClick={() => setGroupBy(g)}>{g === "order" ? "Order" : g === "owner" ? "Owner" : "Priority"}</button>)}</div>
       <button className="dashboard-icon-button" type="button" aria-pressed={showQuotes} title="Show source quotes" onClick={() => setShowQuotes((v) => !v)}><Icon name="conversation" size={16} /></button>
@@ -631,7 +595,7 @@ function SendToBoard({ meetingId, items, onCancel, onDone, onError }: { meetingI
       <label className="field"><span>Column</span><select value={columnId} onChange={(e) => setColumnId(e.target.value)} disabled={!columns.length}>{columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}{!columns.length ? <option value="">To Do</option> : null}</select></label>
     </div>
     <div className="send-board__preview">
-      <p className="dashboard-location">{items.length} task{items.length === 1 ? "" : "s"} will be created in {columnName}</p>
+      <p className="app-muted">{items.length} task{items.length === 1 ? "" : "s"} will be created in {columnName}</p>
       {items.map((i) => <div key={i.id} className="send-board__row"><Icon name="check" size={13} /><span className="truncate">{i.title}</span>{i.ownerName ? <small>{i.ownerName}</small> : null}<span className={`prio prio--${i.priority}`}>{i.priority}</span></div>)}
     </div>
     <footer><button className="dashboard-text-button" type="button" onClick={onCancel}>Back to review</button><button className="dashboard-primary-button" type="button" disabled={saving} onClick={() => void create()}>{saving ? "Creating…" : `Create ${items.length} task${items.length === 1 ? "" : "s"}`} <Icon name="arrow" size={14} /></button></footer>
@@ -642,7 +606,7 @@ function MeetingTasks({ meetingId }: { meetingId: string }) {
   const [tasks, setTasks] = useState<Awaited<ReturnType<typeof listTasksForMeeting>>["tasks"] | null>(null);
   useEffect(() => { listTasksForMeeting(meetingId).then((r) => setTasks(r.tasks)).catch(() => setTasks([])); }, [meetingId]);
   if (tasks === null) return <p className="app-muted">Loading…</p>;
-  if (!tasks.length) return <section className="dashboard-surface"><p className="app-muted">No tasks yet — approve action items and send them to a board.</p></section>;
+  if (!tasks.length) return <section className="dashboard-surface"><p className="app-muted">No tasks yet. Approve the suggestions above and send them to a board.</p></section>;
   return <section className="dashboard-surface">
     <div className="mlist">
       <div className="mlist__head mlist__head--tasks" aria-hidden="true"><span>Task</span><span>Status</span><span>Priority</span><span>Due</span></div>

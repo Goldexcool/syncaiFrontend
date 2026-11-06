@@ -15,7 +15,7 @@ import {
 // ── Projects ───────────────────────────────────────────────────────────────
 
 export function ProjectsScreen() {
-  return <AppShell crumbs={["Projects"]}><ProjectsBody /></AppShell>;
+  return <AppShell crumbs={["Boards"]}><ProjectsBody /></AppShell>;
 }
 
 function ProjectsBody() {
@@ -34,13 +34,13 @@ function ProjectsBody() {
 
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Projects</p><h1>Where the work lives.</h1><p className="dashboard-intro">Each project has a board. Tasks approved from meetings land here, linked to where they were said.</p></div>
-      <div className="dashboard-content__actions"><Link className="dashboard-quiet-button" href="/tasks"><Icon name="check" size={15} />All tasks</Link><button className="dashboard-primary-button" type="button" onClick={() => setComposer(true)}><Icon name="plus" size={15} />New project</button></div>
+      <div><h1>Boards</h1><p className="dashboard-intro">Tasks you approve from meetings land here.</p></div>
+      <div className="dashboard-content__actions"><Link className="dashboard-quiet-button" href="/tasks"><Icon name="check" size={15} />All tasks</Link><button className="dashboard-primary-button" type="button" onClick={() => setComposer(true)}><Icon name="plus" size={15} />New board</button></div>
     </header>
     {composer ? <ComposerPanel type="project" meetings={[]} onClose={() => setComposer(false)} onCreated={(c) => { setComposer(false); if (c.kind === "project") setProjects((p) => [c.item, ...(p ?? [])]); }} /> : null}
-    {projects === null ? <p className="app-muted">Loading…</p> : projects.length === 0 ? <StartPanel title="No projects yet." body="A project is a board of work. Start one yourself, or let your next meeting create the tasks for you." actions={[
-        { icon: "plus", title: "Create a project", body: "Name it and get a board with To do, In progress, In review and Done.", onClick: () => setComposer(true) },
-        { icon: "conversation", title: "Turn a meeting into tasks", body: "Approve the action items VOII finds and send them to a board.", href: "/meetings" },
+    {projects === null ? <p className="app-muted">Loading…</p> : projects.length === 0 ? <StartPanel title="No boards yet." body="A board holds your tasks. Start one yourself, or approve tasks from a meeting." actions={[
+        { icon: "plus", title: "Create a board", body: "Name it and get To do, In progress, In review and Done.", onClick: () => setComposer(true) },
+        { icon: "conversation", title: "Turn a meeting into tasks", body: "Approve the tasks VOII suggests and send them to a board.", href: "/meetings" },
         { icon: "team", title: "Invite your team", body: "Assign tasks to the people who’ll do them.", href: "/settings#members" },
       ]} />
       : <div className="card-grid">
@@ -63,7 +63,7 @@ function ProjectsBody() {
 const TASK_GROUPS: Array<[string, string]> = [["todo", "To do"], ["in_progress", "In progress"], ["in_review", "In review"], ["done", "Done"]];
 
 export function TasksScreen() {
-  return <AppShell crumbs={["Projects", "Tasks"]}><TasksBody /></AppShell>;
+  return <AppShell crumbs={["Boards", "Tasks"]}><TasksBody /></AppShell>;
 }
 
 function TasksBody() {
@@ -80,15 +80,15 @@ function TasksBody() {
   const shown = (tasks ?? []).filter((t) => t.status !== "cancelled" && (filter === "all" || (filter === "done" ? t.status === "done" : t.status !== "done")));
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Tasks</p><h1>Everything to do.</h1><p className="dashboard-intro">Across every board, each linked back to the meeting it came from.</p></div>
+      <div><h1>Tasks</h1><p className="dashboard-intro">Everything across your boards.</p></div>
     </header>
     <div className="seg" role="tablist" aria-label="Filter tasks">
       {([["open", "Open"], ["all", "All"], ["done", "Completed"]] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={filter === id} className={filter === id ? "is-active" : ""} onClick={() => setFilter(id)}>{label}{tasks ? <span>{tasks.filter((t) => t.status !== "cancelled" && (id === "all" || (id === "done" ? t.status === "done" : t.status !== "done"))).length}</span> : null}</button>)}
     </div>
     {tasks === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <StartPanel title={filter === "done" ? "Nothing finished yet." : "Nothing to do — yet."} body="Tasks come from the action items you approve in a meeting, or from your boards." actions={[
-        { icon: "check", title: "Review action items", body: "See what VOII pulled out of your recent meetings.", href: "/meetings" },
+        { icon: "check", title: "Review suggested tasks", body: "See what VOII pulled out of your recent meetings.", href: "/meetings" },
         { icon: "plus", title: "Capture a meeting", body: "Upload a recording or send the notetaker to a call.", href: "/meetings/new" },
-        { icon: "board", title: "Open a board", body: "Add tasks by hand on any project board.", href: "/projects" },
+        { icon: "board", title: "Open a board", body: "Add tasks by hand on any board.", href: "/projects" },
       ]} />
       : TASK_GROUPS.map(([status, label]) => {
         const list = shown.filter((t) => (t.status ?? "todo") === status);
@@ -108,7 +108,7 @@ function TasksBody() {
 // ── Client Workspace ───────────────────────────────────────────────────────
 
 export function ClientsScreen() {
-  return <AppShell crumbs={["Client Workspace"]}><ClientsBody /></AppShell>;
+  return <AppShell crumbs={["Clients"]}><ClientsBody /></AppShell>;
 }
 
 function ClientsBody() {
@@ -131,13 +131,13 @@ function ClientsBody() {
   const selected = clients?.find((c) => c.id === open) ?? clients?.[0] ?? null;
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Client Workspace</p><h1>Keep clients in the loop.</h1><p className="dashboard-intro">{clients ? `${clients.length} client${clients.length === 1 ? "" : "s"} · ${active} link${active === 1 ? "" : "s"} live.` : "Loading…"} Each client gets a private link to follow progress and message your team.</p></div>
+      <div><h1>Clients</h1><p className="dashboard-intro">{clients ? `${clients.length} client${clients.length === 1 ? "" : "s"} · ${active} link${active === 1 ? "" : "s"} live.` : "Loading…"} Each client gets a private link to follow progress and message your team.</p></div>
       <div className="dashboard-content__actions"><button className="dashboard-primary-button" type="button" onClick={() => setComposer(true)}><Icon name="plus" size={15} />Add client</button></div>
     </header>
     {composer ? <ComposerPanel type="client" meetings={[]} onClose={() => setComposer(false)} onCreated={(c) => { setComposer(false); if (c.kind === "client") { setClients((all) => [c.item, ...(all ?? [])]); setOpen(c.item.id); } }} /> : null}
     {clients === null ? <p className="app-muted">Loading…</p> : clients.length === 0 ? <StartPanel title="Bring your clients into the loop." body="Each client gets a private link where they follow progress on their project and message your team — no account needed." actions={[
         { icon: "plus", title: "Add a client", body: "Their name and contact email are enough to start.", onClick: () => setComposer(true) },
-        { icon: "board", title: "Set up their project", body: "The client link shows that project’s board as progress.", href: "/projects" },
+        { icon: "board", title: "Set up their board", body: "The client link shows that board as progress.", href: "/projects" },
         { icon: "bot", title: "Record the next client call", body: "Send the notetaker; approved tasks show up for them.", href: "/meetings/new?method=link" },
       ]} />
       : <div className={`clients${open ? " clients--open" : ""}`}>
@@ -227,7 +227,7 @@ function AiBody() {
     </section>)}
 
     {!history.length ? <div className="ai-groups">{AI_SUGGESTIONS.map(([label, icon, items]) => <div key={label}>
-      <p className="dashboard-location ai-label"><Icon name={icon} size={13} /> {label}</p>
+      <p className="ai-label"><Icon name={icon} size={13} /> {label}</p>
       <div className="ai-suggestions">{items.map((s) => <button key={s} type="button" className="ai-suggestion" onClick={() => void ask(s)}><Icon name="arrow" size={13} />{s}</button>)}</div>
     </div>)}</div> : null}
   </div>;
@@ -279,16 +279,12 @@ function InboxBody() {
   const shown = (items ?? []).filter((n) => filter === "all" || !n.read);
   return <div className="flow-narrow">
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Inbox</p><h1>What happened.</h1><p className="dashboard-intro">Updates from your meetings, tasks and clients.</p></div>
+      <div><h1>Inbox</h1></div>
       <div className="dashboard-content__actions"><button className="dashboard-quiet-button" type="button" onClick={async () => { await markAllNotificationsRead().catch(() => undefined); setItems((all) => all?.map((n) => ({ ...n, read: true })) ?? null); }}><Icon name="check" size={15} />Mark all read</button></div>
     </header>
     <div className="seg">{(["all", "unread"] as const).map((f) => <button key={f} type="button" className={filter === f ? "is-active" : ""} onClick={() => setFilter(f)}>{f === "all" ? "All" : "Unread"}<span>{f === "all" ? items?.length ?? 0 : items?.filter((n) => !n.read).length ?? 0}</span></button>)}</div>
     <section className={items && !shown.length ? "" : "dashboard-surface"}>
-      {items === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <StartPanel title="You’re all caught up." body="Meeting notes, task changes and client messages show up here as they happen." actions={[
-        { icon: "upload", title: "Upload a recording", body: "Get notes and suggested tasks in a few minutes.", href: "/meetings/new?method=upload" },
-        { icon: "bot", title: "Send the notetaker", body: "Paste a Meet, Zoom or Teams link.", href: "/meetings/new?method=link" },
-        { icon: "sparkles", title: "Ask the assistant", body: "“What did we decide this week?”", href: "/ai" },
-      ]} />
+      {items === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? <p className="app-muted">You’re all caught up.</p>
         : <div className="dash-rows">{shown.map((n) => <button key={n.id} type="button" className={`inbox-row ${n.read ? "" : "is-unread"}`} onClick={() => void open(n)}>
           <span className="dash-row__icon"><Icon name={n.type.includes("meeting") ? "conversation" : n.type.includes("task") ? "check" : n.type.includes("action") ? "sparkles" : "bell"} size={15} /></span>
           <span className="dash-row__main"><strong>{n.title}</strong><small>{n.message}</small></span>

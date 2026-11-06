@@ -79,7 +79,7 @@ export default function PortalPanel({ clientId, clientName, onLive }: { clientId
         <p className="app-muted">Give {clientName} a private link to follow a project’s progress and message your team. No account needed.</p>
         <div className="portal-create">
           {projects.length
-            ? <Picker label="Project to show" value={projectId} onChange={setProjectId} options={projects.map((p) => ({ value: p.id, label: p.name }))} />
+            ? <Picker label="Board to show" value={projectId} onChange={setProjectId} options={projects.map((p) => ({ value: p.id, label: p.name }))} />
             : <span className="app-muted">No project yet — the link will show messages only.</span>}
           <button className="dashboard-primary-button" type="button" onClick={() => void create()}>Create client link</button>
         </div>

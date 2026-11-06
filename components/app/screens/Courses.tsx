@@ -32,7 +32,7 @@ function CoursesBody() {
 
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Courses</p><h1>Your courses.</h1><p className="dashboard-intro">Each course keeps its lectures, notes and study tools together.</p></div>
+      <div><h1>Courses</h1><p className="dashboard-intro">Each course keeps its lectures, notes and study tools together.</p></div>
       <div className="dashboard-content__actions"><button className="dashboard-primary-button" type="button" onClick={() => setAdding(true)}><Icon name="plus" size={15} />Add a course</button></div>
     </header>
     {error ? <p className="app-error" role="alert">{error}</p> : null}
@@ -87,7 +87,7 @@ function CourseBody({ id }: { id: string }) {
   if (!course) return error ? <p className="app-error" role="alert">{error}</p> : <p className="app-muted">Loading…</p>;
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">{course.code || "Course"}</p><h1>{course.name}</h1><p className="dashboard-intro">{course.lecturer ? `${course.lecturer} · ` : ""}{lectures.length} lecture{lectures.length === 1 ? "" : "s"}</p></div>
+      <div><h1>{course.name}</h1><p className="dashboard-intro">{course.code ? `${course.code} · ` : ""}{course.lecturer ? `${course.lecturer} · ` : ""}{lectures.length} lecture{lectures.length === 1 ? "" : "s"}</p></div>
       <div className="dashboard-content__actions"><Link className="dashboard-primary-button" href={`/meetings/new?method=upload&course=${id}`}><Icon name="plus" size={15} />New lecture</Link></div>
     </header>
     {error ? <p className="app-error" role="alert">{error}</p> : null}

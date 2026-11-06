@@ -108,7 +108,7 @@ export function SharePage({ token }: { token: string }) {
       <h1>{data.share?.title || m.title}</h1>
     </header></div>
     {m.summary ? <article className="pub__card"><Markdown>{summaryToMarkdown(m.summary)}</Markdown></article> : null}
-    {m.actionItems.length ? <section className="pub__card"><h2>Action items</h2><ul>{m.actionItems.map((a) => <li key={a.id}>{a.title}{a.ownerName ? ` — ${a.ownerName}` : ""}</li>)}</ul></section> : null}
+    {m.actionItems.length ? <section className="pub__card"><h2>Tasks</h2><ul>{m.actionItems.map((a) => <li key={a.id}>{a.title}{a.ownerName ? ` — ${a.ownerName}` : ""}</li>)}</ul></section> : null}
     {m.transcript.length ? <section className="pub__card"><h2>Transcript</h2><ol className="transcript">{m.transcript.map((s) => <li key={s.id}><span className="src mono">{formatClock(s.startSec)} · {s.speaker}</span><p>{s.text}</p></li>)}</ol></section> : null}
   </PaperFrame>;
 }

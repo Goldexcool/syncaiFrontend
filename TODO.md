@@ -25,6 +25,8 @@ Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync`
 - `GET /api/admin/analytics/overview` fails with a SQL error (`column "workspace_id" does not exist`). `/enoch` doesn't use it.
 - **[needs you]** Production admin: run `pnpm admin:create-super` against the Neon `DATABASE_URL` (see `sync/apps/api/scripts/create-super-admin.ts`).
 
+- UX simplification done (2026-11-06): Tasks and Boards as the only words, five-item menu, no bell or sparkle icon, AI page opens from Search, three-card-free Home, three meeting tabs, plain page headings, one account-based recording flow. Teams can no longer mark a recording as a lecture.
+
 ## Blockers for launch
 
 1. **[needs you]** **`APP_URL` is missing on Render**, so production emails link to `http://localhost:3000`. That covers verification, password reset and invites. Set `APP_URL=https://usevoii.com` on `syncaibackend` (Dashboard → Environment), then redeploy. The CLI has no env-var command, and my API call to set it was blocked.

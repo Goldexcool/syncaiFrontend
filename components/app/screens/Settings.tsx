@@ -21,7 +21,7 @@ import {
  */
 const SECTIONS: Array<{ group: string; items: Array<[id: string, label: string]> }> = [
   { group: "Account", items: [["profile", "Profile"], ["password", "Password"], ["notifications", "Notifications"]] },
-  { group: "Workspace", items: [["workspace", "General"], ["members", "Members"], ["action-items", "Action items"], ["vocabulary", "Vocabulary"], ["memory", "What VOII remembers"], ["integrations", "Integrations"], ["plan", "Plan & usage"]] },
+  { group: "Workspace", items: [["workspace", "General"], ["members", "Members"], ["action-items", "Suggested tasks"], ["vocabulary", "Vocabulary"], ["memory", "What VOII remembers"], ["integrations", "Integrations"], ["plan", "Plan & usage"]] },
   { group: "", items: [["danger", "Delete account"]] },
 ];
 
@@ -33,7 +33,7 @@ function SettingsBody() {
   const active = useActiveSection(SECTIONS.flatMap((g) => g.items.map(([id]) => id)));
   return <>
     <CalendarReturnNotice />
-    <header className="dashboard-content__header"><div><p className="dashboard-location">Settings</p><h1>Settings.</h1><p className="dashboard-intro">Your account, your workspace, and the people in it.</p></div></header>
+    <header className="dashboard-content__header"><div><h1>Settings</h1><p className="dashboard-intro">Your account, your workspace, and the people in it.</p></div></header>
     <div className="settings">
       <nav className="settings__nav" aria-label="Settings sections">
         {SECTIONS.map((g, i) => <div key={i} className="settings__nav-group">
@@ -144,8 +144,8 @@ function PasswordSection() {
 const NOTIFICATION_LABELS: Record<string, string> = {
   meeting_processing_completed: "Notes are ready",
   meeting_processing_failed: "A meeting couldn’t be processed",
-  action_items_ready: "Action items to review",
-  action_items_converted: "Action items sent to a board",
+  action_items_ready: "Suggested tasks to review",
+  action_items_converted: "Tasks sent to a board",
   task_assigned: "A task is assigned to you",
   task_comment_added: "Someone comments on your task",
   task_status_changed: "A task changes status",
@@ -259,9 +259,9 @@ function MembersSection() {
 }
 
 const AUTO_APPROVE: Array<[AutoApprove, string, string]> = [
-  ["off", "Review everything", "Every action item waits for you to approve it."],
+  ["off", "Review everything", "Every suggested task waits for you to approve it."],
   ["confident", "Approve the clear ones", "VOII approves items it is sure about and that have an owner. The rest wait for you."],
-  ["all", "Approve everything", "Every action item is approved as soon as the meeting is processed."],
+  ["all", "Approve everything", "Every suggested task is approved as soon as the meeting is processed."],
 ];
 
 function AutoApproveSection() {
@@ -274,8 +274,8 @@ function AutoApproveSection() {
     setError("");
     try { await setAutoApprove(next); } catch (e) { setMode(prev); setError(getErrorMessage(e)); }
   }
-  return <Section id="action-items" title="Action items" description="What happens to the tasks VOII finds in a meeting. Applies to meetings processed from now on.">
-    <div className="choice-list" role="radiogroup" aria-label="Approve action items">
+  return <Section id="action-items" title="Suggested tasks" description="What happens to the tasks VOII finds in a meeting. Applies to meetings processed from now on.">
+    <div className="choice-list" role="radiogroup" aria-label="Approve suggested tasks">
       {AUTO_APPROVE.map(([value, label, description]) => <button key={value} type="button" role="radio" aria-checked={mode === value} className={`choice${mode === value ? " is-selected" : ""}`} onClick={() => void choose(value)} disabled={mode === null}>
         <span className="choice__copy"><strong>{label}</strong><span>{description}</span></span>
         <span className="choice__mark" aria-hidden="true">{mode === value ? <Icon name="check" size={13} /> : null}</span>

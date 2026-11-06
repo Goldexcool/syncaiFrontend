@@ -4,13 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/app/AppShell";
 import { formatClock } from "@/components/app/Notes";
-import { useAuth } from "@/components/AuthProvider";
-import { Icon, StartPanel, formatDate, formatTime } from "@/components/app/kit";
+import { Icon, StartPanel, formatDate, formatTime, useWords } from "@/components/app/kit";
 import { listMeetingsFull, type MeetingDetail } from "@/lib/api/app";
 
 const FILTERS = [
   { id: "all", label: "All", test: () => true },
-  { id: "review", label: "Ready for review", test: (m: MeetingDetail) => m.status === "pending_review" },
+  { id: "review", label: "Needs review", test: (m: MeetingDetail) => m.status === "pending_review" },
   { id: "processing", label: "Processing", test: (m: MeetingDetail) => ["uploaded", "queued", "processing", "transcribing", "summarizing", "extracting_action_items"].includes(m.status ?? "") },
   { id: "complete", label: "Complete", test: (m: MeetingDetail) => ["tasks_created", "completed"].includes(m.status ?? "") },
   { id: "lectures", label: "Lectures", test: (m: MeetingDetail) => m.kind === "lecture" },
@@ -26,7 +25,7 @@ export const STATUS: Record<string, { label: string; tone: string }> = {
   transcribing: { label: "Transcribing", tone: "info" },
   summarizing: { label: "Summarising", tone: "info" },
   extracting_action_items: { label: "Finding tasks", tone: "info" },
-  pending_review: { label: "Ready for review", tone: "peach" },
+  pending_review: { label: "Needs review", tone: "peach" },
   tasks_created: { label: "Complete", tone: "sage" },
   completed: { label: "Complete", tone: "sage" },
   failed: { label: "Failed", tone: "clay" },
@@ -42,8 +41,7 @@ export default function Meetings() {
 }
 
 function MeetingsBody() {
-  const { workspace } = useAuth();
-  const student = workspace?.type === "student";
+  const words = useWords();
   const [meetings, setMeetings] = useState<MeetingDetail[] | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [q, setQ] = useState("");
@@ -54,26 +52,26 @@ function MeetingsBody() {
 
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">{student ? "Lectures" : "Meetings"}</p><h1>{student ? "Every lecture." : "Every conversation."}</h1><p className="dashboard-intro">{meetings ? `${meetings.length} in this workspace.` : "Loading…"}</p></div>
-      <div className="dashboard-content__actions"><Link className="dashboard-primary-button" href="/meetings/new"><Icon name="plus" size={15} />{student ? "New lecture" : "New meeting"}</Link></div>
+      <div><h1>{words.Meetings}</h1><p className="dashboard-intro">{meetings ? `${meetings.length} in this workspace.` : "Loading…"}</p></div>
+      <div className="dashboard-content__actions"><Link className="dashboard-primary-button" href="/meetings/new"><Icon name="plus" size={15} />New {words.meeting}</Link></div>
     </header>
     <div className="list-toolbar">
       <div className="seg" role="tablist" aria-label="Filter meetings">
         {FILTERS.map((x) => <button key={x.id} role="tab" aria-selected={filter === x.id} className={filter === x.id ? "is-active" : ""} onClick={() => setFilter(x.id)}>{x.label}{x.id !== "all" && meetings ? <span>{meetings.filter(x.test).length}</span> : null}</button>)}
       </div>
-      <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search meetings" aria-label="Search meetings" /></label>
+      <label className="kb__search"><span aria-hidden="true">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${words.meeting}s`} aria-label={`Search ${words.meeting}s`} /></label>
     </div>
     <section className={meetings && !shown.length ? "" : "dashboard-surface"}>
       {meetings === null ? <p className="app-muted">Loading…</p> : shown.length === 0 ? (filter === "all" && !q
-        ? <StartPanel title="Your first conversation belongs here." body="VOII turns a recording into a transcript with names, a summary, and tasks waiting for your approval." actions={[
+        ? <StartPanel title={`No ${words.meeting}s yet.`} body="VOII turns a recording into a transcript, notes and suggested tasks." actions={[
           { icon: "upload", title: "Upload a recording", body: "MP3, M4A, WAV, MP4 or WebM — or record in the browser.", href: "/meetings/new?method=upload" },
           { icon: "bot", title: "Send the notetaker", body: "It joins your Meet, Zoom or Teams call and records it.", href: "/meetings/new?method=link" },
           { icon: "calendar", title: "From your calendar", body: "Have it join scheduled calls automatically.", href: "/meetings/new?method=calendar" },
         ]} />
-        : <p className="app-muted">No meetings match this filter.</p>)
+        : <p className="app-muted">No {words.meeting}s match this filter.</p>)
         : <div className="mlist">
-          <div className="mlist__head" aria-hidden="true"><span>Meeting</span><span>Status</span><span>Length</span><span>Date</span></div>
-          {shown.map((m) => <Link key={m.id} href={`/meetings/${m.id}${m.status === "pending_review" ? "?tab=action-items" : ""}`} className="mlist__row">
+          <div className="mlist__head" aria-hidden="true"><span>{words.Meeting}</span><span>Status</span><span>Length</span><span>Date</span></div>
+          {shown.map((m) => <Link key={m.id} href={`/meetings/${m.id}${m.status === "pending_review" ? "?tab=tasks" : ""}`} className="mlist__row">
             <span className="mtable__title"><Icon name={m.source === "meeting_link" ? "bot" : m.kind === "lecture" ? "mic" : "upload"} size={15} /><span className="dash-row__main"><strong className="truncate">{m.title}</strong>{m.course ? <small>{m.course.code ? `${m.course.code} · ` : ""}{m.course.name}</small> : m.shortSummary ? <small className="truncate">{m.shortSummary}</small> : null}</span></span>
             <span><StatusChip status={m.status} /></span>
             <span className="mono app-muted">{m.durationSec ? formatClock(m.durationSec) : "—"}</span>

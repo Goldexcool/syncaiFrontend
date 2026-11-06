@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/components/AuthProvider";
 
 import { ApiRequestError } from "@/lib/api/client";
 
@@ -40,6 +41,13 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return <svg aria-hidden="true" fill="none" height={size} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 24 24" width={size}>{paths[name]}</svg>;
 }
 
+
+/** Students see lectures; everyone else sees meetings. */
+export function useWords() {
+  const { workspace } = useAuth();
+  const student = workspace?.type === "student";
+  return { student, meeting: student ? "lecture" : "meeting", Meeting: student ? "Lecture" : "Meeting", Meetings: student ? "Lectures" : "Meetings" };
+}
 
 export function displayName(fullName?: string | null, email?: string | null) {
   return fullName?.trim() || email?.split("@")[0] || "there";

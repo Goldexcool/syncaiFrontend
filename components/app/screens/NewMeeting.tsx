@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import AppShell from "@/components/app/AppShell";
 import { formatClock } from "@/components/app/Notes";
-import { Icon, displayName, formatDate, formatTime, type IconName } from "@/components/app/kit";
+import { Icon, displayName, formatDate, formatTime, useWords, type IconName } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import { createCourse, createMeetingFull, listCourses, scheduleBot, sendBot, setEventBot, uploadRecording, type Course, type MeetingKind } from "@/lib/api/app";
 import { listCalendarEvents, syncCalendarNow, type CalendarEvent } from "@/lib/api/dashboard";
@@ -27,9 +27,10 @@ export default function NewMeeting() {
 
 function NewMeetingBody() {
   const router = useRouter();
-  const { user, workspace } = useAuth();
+  const { user } = useAuth();
+  const words = useWords();
+  const kind: MeetingKind = words.student ? "lecture" : "meeting";
   const [method, setMethod] = useState<Method>("upload");
-  const [kind, setKind] = useState<MeetingKind>("meeting");
   const [title, setTitle] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseId, setCourseId] = useState("");
@@ -48,9 +49,8 @@ function NewMeetingBody() {
     const m = params.get("method");
     if (m === "upload" || m === "link" || m === "calendar") setMethod(m);
     const course = params.get("course");
-    if (course || workspace?.type === "student") setKind("lecture");
     listCourses().then((r) => { setCourses(r.courses); setCourseId(course ?? r.courses[0]?.id ?? "new"); }).catch(() => setCourseId("new"));
-  }, [workspace?.type]);
+  }, []);
   useEffect(() => { setBotName(`VOII Notetaker (for ${displayName(user?.fullName, user?.email).split(" ")[0]})`); }, [user]);
 
   const provider = providerFor(link.trim());
@@ -76,13 +76,26 @@ function NewMeetingBody() {
         if (!consent) return setError("Confirm everyone on the call knows it’s being recorded.");
         if (timing === "later" && !joinAt) return setError("Pick when the notetaker should join.");
         setBusy("Sending the notetaker…");
-        const { meeting } = await createMeetingFull({ title: title.trim() || `${PROVIDER_LABEL[provider]} call`, kind: "meeting", source: "meeting_link", provider, meetingUrl: link.trim() });
+        const { meeting } = await createMeetingFull({ title: title.trim() || `${PROVIDER_LABEL[provider]} call`, kind, courseId: await resolveCourse(), source: "meeting_link", provider, meetingUrl: link.trim() });
         if (timing === "now") await sendBot(meeting.id, botName.trim() || "VOII Notetaker");
         else await scheduleBot(meeting.id, new Date(joinAt).toISOString(), botName.trim() || "VOII Notetaker");
         router.push(`/meetings/${meeting.id}`);
       }
     } catch (e) { setError(msg(e)); setBusy(""); }
   }
+
+  const coursePicker = kind === "lecture" ? <>
+        <label className="field"><span>Course</span>
+          <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            {courses.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} — ` : ""}{c.name}</option>)}
+            <option value="new">+ New course</option>
+          </select>
+        </label>
+        {courseId === "new" ? <div className="field-grid">
+          <label className="field"><span>Course name</span><input value={newCourse.name} onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="Calculus I" /></label>
+          <label className="field"><span>Code <small>Optional</small></span><input value={newCourse.code} onChange={(e) => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="MTH 201" /></label>
+        </div> : null}
+      </> : null;
 
   const tiles: Array<{ id: Method; icon: IconName; title: string; sub: string }> = [
     { id: "upload", icon: "upload", title: "Upload recording", sub: "MP3, M4A, WAV, MP4 or WebM — or record here" },
@@ -92,8 +105,7 @@ function NewMeetingBody() {
 
   return <div className="flow-wide">
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">New meeting</p><h1>Capture a conversation.</h1><p className="dashboard-intro">From a file, a live call, or your calendar. VOII writes it up and suggests the tasks.</p></div>
-      <div className="dashboard-content__actions"><button className="dashboard-quiet-button" type="button" onClick={() => router.push("/dashboard")}>Cancel</button></div>
+      <div><h1>New {words.meeting}</h1></div>
     </header>
 
     <div className="flow-split"><div className="flow-split__main">
@@ -106,30 +118,15 @@ function NewMeetingBody() {
 
     {method === "upload" ? <section className="dashboard-surface flow-form">
       <Dropzone file={file} onFile={setFile} />
-      <div className="seg-toggle" role="radiogroup" aria-label="Kind">
-        <button type="button" role="radio" aria-checked={kind === "meeting"} className={kind === "meeting" ? "is-active" : ""} onClick={() => setKind("meeting")}>Meeting or client call</button>
-        <button type="button" role="radio" aria-checked={kind === "lecture"} className={kind === "lecture" ? "is-active" : ""} onClick={() => setKind("lecture")}>Lecture</button>
-      </div>
-      <label className="field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === "lecture" ? "Week 6 — Quadratics" : "Northstar weekly sync"} /></label>
-      {kind === "lecture" ? <>
-        <label className="field"><span>Course</span>
-          <select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-            {courses.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} — ` : ""}{c.name}</option>)}
-            <option value="new">+ New course</option>
-          </select>
-        </label>
-        {courseId === "new" ? <div className="field-grid">
-          <label className="field"><span>Course name</span><input value={newCourse.name} onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="Calculus I" /></label>
-          <label className="field"><span>Code <small>Optional</small></span><input value={newCourse.code} onChange={(e) => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="MTH 201" /></label>
-          <label className="field span-2"><span>Words it should spell right <small>Comma separated</small></span><input value={newCourse.keyterms} onChange={(e) => setNewCourse({ ...newCourse, keyterms: e.target.value })} placeholder="Dr. Adeyemi, eigenvalue, Laplace" /></label>
-        </div> : null}
-      </> : null}
+      <label className="field"><span>Title <small>Optional</small></span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={file ? file.name.replace(/\.[^.]+$/, "") : words.student ? "Week 6, Quadratics" : "Northstar weekly sync"} /></label>
+      {coursePicker}
     </section> : null}
 
     {method === "link" ? <section className="dashboard-surface flow-form">
       <label className="field"><span>Meeting link</span><input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://meet.google.com/abc-defg-hij" autoFocus />
         {link.trim() ? <small className={provider ? "field-ok" : "field-bad"}>{provider ? `Detected: ${PROVIDER_LABEL[provider]}` : "Paste a Google Meet, Zoom or Teams link"}</small> : null}</label>
-      <label className="field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Northstar weekly sync" /></label>
+      <label className="field"><span>Title <small>Optional</small></span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Northstar weekly sync" /></label>
+      {coursePicker}
       <div className="field"><span>When should the notetaker join?</span>
         <div className="seg-toggle" role="radiogroup">
           <button type="button" role="radio" aria-checked={timing === "now"} className={timing === "now" ? "is-active" : ""} onClick={() => setTiming("now")}>Now</button>
@@ -137,7 +134,6 @@ function NewMeetingBody() {
         </div>
       </div>
       {timing === "later" ? <label className="field"><span>Join at</span><input type="datetime-local" value={joinAt} min={new Date(Date.now() + 120000).toISOString().slice(0, 16)} onChange={(e) => setJoinAt(e.target.value)} /></label> : null}
-      <label className="field"><span>Notetaker name</span><input value={botName} onChange={(e) => setBotName(e.target.value)} maxLength={80} /><small>Shown to everyone on the call, so its presence is clear.</small></label>
       <label className="consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>I confirm recording this meeting is allowed and everyone on the call will know it’s being recorded.</span></label>
     </section> : null}
 
@@ -219,7 +215,7 @@ function NextSteps({ bot, lecture }: { bot: boolean; lecture: boolean }) {
     { icon: "check", label: "Tasks suggested for your approval" },
     { icon: "bell", label: "You’re told when it’s ready" },
   ];
-  return <div className="next-steps"><p className="dashboard-location">What happens next</p><ol>{steps.map((s) => <li key={s.label}><span className="dash-row__icon"><Icon name={s.icon} size={15} /></span><small>{s.label}</small></li>)}</ol></div>;
+  return <div className="next-steps"><p className="next-steps__title">What happens next</p><ol>{steps.map((s) => <li key={s.label}><span className="dash-row__icon"><Icon name={s.icon} size={15} /></span><small>{s.label}</small></li>)}</ol></div>;
 }
 
 /** Calendar events: switch the notetaker on per event; it joins at start time. */

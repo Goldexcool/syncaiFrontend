@@ -26,7 +26,7 @@ function columnTone(name: string) {
 }
 
 export default function BoardPage() {
-  return <AppShell crumbs={["Projects", "Board"]} full><BoardView /></AppShell>;
+  return <AppShell crumbs={["Boards", "Board"]} full><BoardView /></AppShell>;
 }
 
 function BoardView() {
@@ -98,8 +98,8 @@ function BoardView() {
   return <div className="kb">
       <header className="kb__head">
         <nav className="kb__crumbs" aria-label="Breadcrumb">
-          <span>Projects</span><span aria-hidden="true">/</span>
-          {projects.length > 1 ? <Picker label="Project" value={projectId} onChange={(v) => void openProject(v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} /> : <span>{project?.name ?? "—"}</span>}
+          <span>Boards</span><span aria-hidden="true">/</span>
+          {projects.length > 1 ? <Picker label="Board" value={projectId} onChange={(v) => void openProject(v)} options={projects.map((p) => ({ value: p.id, label: p.name }))} /> : <span>{project?.name ?? "—"}</span>}
           {boards.length > 1 ? <><span aria-hidden="true">/</span><Picker label="Board" value={board?.id} onChange={(v) => void refresh(v)} options={boards.map((b) => ({ value: b.id, label: b.name }))} /></> : null}
         </nav>
         <h1>{board?.name ?? "Board"}</h1>

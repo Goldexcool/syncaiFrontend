@@ -6,21 +6,19 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
-import { NotificationPopover } from "@/components/app/parts";
-import { Icon, displayName, initials, type IconName } from "@/components/app/kit";
+import { Icon, displayName, initials, useWords, type IconName } from "@/components/app/kit";
 import { getUsageInfo, listMeetingsFull, type MeetingDetail, type UsageInfo } from "@/lib/api/app";
 import { PLAN_LIMIT_EVENT } from "@/lib/api/client";
 import type { WorkspaceType } from "@/lib/api/auth";
-import { getUnreadNotificationCount, listNotifications, listProjects, markAllNotificationsRead, markNotificationRead, type Notification, type Project } from "@/lib/api/dashboard";
+import { getUnreadNotificationCount, listProjects, type Project } from "@/lib/api/dashboard";
 
 /** The flow's navigation: one place per job, in the order the work happens. */
 const NAV: Array<{ href: string; label: string; icon: IconName; match: (p: string) => boolean; only?: WorkspaceType }> = [
-  { href: "/dashboard", label: "Dashboard", icon: "home", match: (p) => p === "/dashboard" },
+  { href: "/dashboard", label: "Home", icon: "home", match: (p) => p === "/dashboard" },
   { href: "/meetings", label: "Meetings", icon: "conversation", match: (p) => p.startsWith("/meetings") },
   { href: "/courses", label: "Courses", icon: "knowledge", match: (p) => p.startsWith("/courses"), only: "student" },
-  { href: "/projects", label: "Projects & boards", icon: "board", match: (p) => p.startsWith("/projects") || p.startsWith("/board") || p.startsWith("/tasks") },
-  { href: "/clients", label: "Client Workspace", icon: "globe", match: (p) => p.startsWith("/clients"), only: "agency" },
-  { href: "/ai", label: "AI Assistant", icon: "sparkles", match: (p) => p.startsWith("/ai") },
+  { href: "/clients", label: "Clients", icon: "globe", match: (p) => p.startsWith("/clients"), only: "agency" },
+  { href: "/projects", label: "Boards", icon: "board", match: (p) => p.startsWith("/projects") || p.startsWith("/board") || p.startsWith("/tasks") },
   { href: "/inbox", label: "Inbox", icon: "inbox", match: (p) => p.startsWith("/inbox") },
 ];
 
@@ -33,16 +31,14 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
   const router = useRouter();
   const { user, workspace, logout } = useAuth();
   const type = workspace?.type ?? "team";
-  const student = type === "student";
+  const words = useWords();
   // An owner who left onboarding early still has to choose.
   useEffect(() => { if (workspace?.type === null && workspace.role === "OWNER") router.replace("/onboarding"); }, [router, workspace]);
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [meetings, setMeetings] = useState<MeetingDetail[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [planLimit, setPlanLimit] = useState("");
 
@@ -57,14 +53,13 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
     listProjects(6).then((r) => setProjects(r.projects ?? [])).catch(() => undefined);
     getUsageInfo().then(setUsage).catch(() => undefined);
     getUnreadNotificationCount().then((r) => setUnread(r.count ?? 0)).catch(() => undefined);
-    listNotifications(8).then((r) => setNotifications(r.notifications ?? [])).catch(() => undefined);
   }, []);
 
   // ⌘K / Ctrl+K opens search · ask AI from anywhere.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((v) => !v); }
-      if (e.key === "Escape") { setPaletteOpen(false); setNotifOpen(false); }
+      if (e.key === "Escape") setPaletteOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -75,16 +70,6 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
   const reviewCount = meetings.filter((m) => m.status === "pending_review").length;
   const meetingsPct = usage?.percentages.meetingsPerMonth;
 
-  async function readNotification(n: Notification) {
-    const href = n.data?.href;
-    if (!n.read) {
-      setUnread((c) => Math.max(0, c - 1));
-      setNotifications((all) => all.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      markNotificationRead(n.id).catch(() => undefined);
-    }
-    if (href?.startsWith("/")) router.push(href);
-  }
-
   return <div className="dashboard-page" id="main-content">
     <div className={`dashboard-shell ${navOpen ? "dashboard-shell--nav-open" : ""}`}>
       <aside className="dashboard-sidebar" aria-label="Workspace navigation">
@@ -93,13 +78,13 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
           <button className="dashboard-mobile-close" type="button" onClick={() => setNavOpen(false)} aria-label="Close navigation"><Icon name="close" /></button>
         </div>
         <button className="shell-search" type="button" onClick={() => setPaletteOpen(true)}><Icon name="search" size={15} /><span>Search · Ask AI</span><kbd>⌘K</kbd></button>
-        <Link className="dashboard-primary-button shell-new" href="/meetings/new"><Icon name="plus" size={15} />{student ? "New lecture" : "New meeting"}</Link>
+        <Link className="dashboard-primary-button shell-new" href="/meetings/new"><Icon name="plus" size={15} />New {words.meeting}</Link>
 
         <nav className="dashboard-nav" aria-label="Primary">
           <p className="dashboard-nav__label">Workspace</p>
           {NAV.filter((item) => !item.only || item.only === type).map((item) => <Link key={item.href} href={item.href} className={`dashboard-nav-item ${item.match(pathname) ? "is-active" : ""}`} aria-current={item.match(pathname) ? "page" : undefined}>
-            <Icon name={item.icon} size={17} /><span>{student && item.href === "/meetings" ? "Lectures" : item.label}</span>
-            {item.href === "/meetings" && reviewCount ? <span className="shell-count shell-count--peach" title="Ready for review">{reviewCount}</span> : null}
+            <Icon name={item.icon} size={17} /><span>{item.href === "/meetings" ? words.Meetings : item.label}</span>
+            {item.href === "/meetings" && reviewCount ? <span className="shell-count shell-count--peach" title="Needs review">{reviewCount}</span> : null}
             {item.href === "/inbox" && unread ? <span className="shell-count">{unread}</span> : null}
           </Link>)}
 
@@ -108,10 +93,6 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
             {projects.slice(0, 5).map((p) => <Link key={p.id} href={`/board?project=${p.id}`} className="dashboard-nav-item shell-sub"><span className="shell-swatch" /><span className="truncate">{p.name}</span></Link>)}
           </> : null}
 
-          {meetings.length ? <>
-            <p className="dashboard-nav__label dashboard-nav__label--spaced">Recent meetings</p>
-            {meetings.slice(0, 3).map((m) => <Link key={m.id} href={`/meetings/${m.id}`} className="dashboard-nav-item shell-sub"><span className={`shell-dot ${m.status === "pending_review" ? "is-review" : ""}`} /><span className="truncate">{m.title}</span></Link>)}
-          </> : null}
         </nav>
 
         <div className="dashboard-sidebar__bottom">
@@ -128,12 +109,7 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <button className="dashboard-mobile-menu" type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation"><span /><span /><span /></button>
-          <nav className="shell-crumbs" aria-label="Breadcrumb">{crumbs.map((c) => (student && c === "Meetings" ? "Lectures" : c)).map((c, i) => <span key={i} className={i === crumbs.length - 1 ? "is-current" : ""}>{i > 0 ? <span className="shell-crumbs__sep" aria-hidden="true">/</span> : null}{c}</span>)}</nav>
-          <div className="dashboard-topbar__actions">
-            <button className="dashboard-icon-button dashboard-notification-button" type="button" aria-expanded={notifOpen} aria-label={unread ? `${unread} unread notifications` : "Notifications"} onClick={() => setNotifOpen((v) => !v)}><Icon name="bell" size={18} />{unread ? <span>{unread > 9 ? "9+" : unread}</span> : null}</button>
-            <button className="dashboard-icon-button" type="button" aria-label="Ask VOII AI" onClick={() => setPaletteOpen(true)}><Icon name="sparkles" size={18} /></button>
-          </div>
-          {notifOpen ? <NotificationPopover notifications={notifications} onRead={readNotification} onReadAll={async () => { await markAllNotificationsRead().catch(() => undefined); setUnread(0); setNotifications((a) => a.map((n) => ({ ...n, read: true }))); }} onClose={() => setNotifOpen(false)} /> : null}
+          <nav className="shell-crumbs" aria-label="Breadcrumb">{crumbs.map((c) => (c === "Meetings" ? words.Meetings : c === "New meeting" ? `New ${words.meeting}` : c)).map((c, i) => <span key={i} className={i === crumbs.length - 1 ? "is-current" : ""}>{i > 0 ? <span className="shell-crumbs__sep" aria-hidden="true">/</span> : null}{c}</span>)}</nav>
         </header>
         <main className={full ? "shell-content shell-content--full" : "dashboard-content"}>
           {planLimit ? <div className="dashboard-alert plan-limit" role="alert"><span>{planLimit}</span><Link href="/settings/billing" onClick={() => setPlanLimit("")}>See plans →</Link><button type="button" aria-label="Dismiss" onClick={() => setPlanLimit("")}>×</button></div> : null}
@@ -154,7 +130,7 @@ function CommandPalette({ meetings, onClose }: { meetings: MeetingDetail[]; onCl
   const groups = useMemo(() => {
     const all: Array<{ label: string; items: Array<{ icon: IconName; title: string; sub?: string; href: string }> }> = [
       { label: "Ask VOII AI", items: q ? [{ icon: "sparkles", title: q, sub: "Send to the AI assistant", href: `/ai?q=${encodeURIComponent(q)}` }] : [{ icon: "sparkles", title: "What needs my review?", href: "/ai?q=" + encodeURIComponent("What needs my review?") }] },
-      { label: "Navigate", items: NAV.map((n) => ({ icon: n.icon, title: n.label, href: n.href })).concat([{ icon: "check", title: "Tasks", href: "/tasks" }, { icon: "settings", title: "Settings", href: "/settings" }]) },
+      { label: "Navigate", items: NAV.map((n) => ({ icon: n.icon, title: n.label, href: n.href })).concat([{ icon: "sparkles", title: "AI Assistant", href: "/ai" }, { icon: "check", title: "Tasks", href: "/tasks" }, { icon: "settings", title: "Settings", href: "/settings" }]) },
       { label: "Quick actions", items: [{ icon: "plus", title: "New meeting", href: "/meetings/new" }, { icon: "upload", title: "Upload a recording", href: "/meetings/new?method=upload" }, { icon: "link", title: "Send the notetaker to a call", href: "/meetings/new?method=link" }] },
       { label: "Meetings", items: meetings.map((m) => ({ icon: "conversation" as IconName, title: m.title, sub: m.course?.name, href: `/meetings/${m.id}` })) },
     ];

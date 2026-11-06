@@ -34,6 +34,8 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
   const { user, workspace, logout } = useAuth();
   const type = workspace?.type ?? "team";
   const student = type === "student";
+  // An owner who left onboarding early still has to choose.
+  useEffect(() => { if (workspace?.type === null && workspace.role === "OWNER") router.replace("/onboarding"); }, [router, workspace]);
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);

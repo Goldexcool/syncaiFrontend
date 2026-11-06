@@ -21,6 +21,10 @@ Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync`
 - Local test: a real 10-minute recording went through transcription, summary and action items to `pending_review`. The download step wasn't covered because this machine's connection to Recall is too slow, so the first production run needs checking. It also hasn't confirmed `STORAGE_PROVIDER` or R2 on Render.
 - [x] Client portal, Sign out row, transcript turns and alignment: committed, not deployed.
 
+- Workspace type is chosen once in onboarding and locked by the API; only `/enoch` can change it. Admin dashboard at `/enoch` (ADMIN and SUPER_ADMIN only). Committed, not deployed.
+- `GET /api/admin/analytics/overview` fails with a SQL error (`column "workspace_id" does not exist`). `/enoch` doesn't use it.
+- **[needs you]** Production admin: run `pnpm admin:create-super` against the Neon `DATABASE_URL` (see `sync/apps/api/scripts/create-super-admin.ts`).
+
 ## Blockers for launch
 
 1. **[needs you]** **`APP_URL` is missing on Render**, so production emails link to `http://localhost:3000`. That covers verification, password reset and invites. Set `APP_URL=https://usevoii.com` on `syncaibackend` (Dashboard → Environment), then redeploy. The CLI has no env-var command, and my API call to set it was blocked.

@@ -2,173 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import AuthGate from "@/components/AuthGate";
 import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
+import Onboarding from "@/components/Onboarding";
 import UnverifiedBanner from "@/components/UnverifiedBanner";
-import { ApiRequestError } from "@/lib/api/client";
-import { renameWorkspace, saveUsagePath, setWorkspaceType, type UsagePath, type WorkspaceType } from "@/lib/api/auth";
-
-const typeOptions: Array<{ value: WorkspaceType; usagePath: UsagePath; label: string; description: string }> = [
-  { value: "student", usagePath: "meeting_notes", label: "I'm studying", description: "Record lectures, keep notes by course, and quiz yourself." },
-  { value: "team", usagePath: "both", label: "I work in a team", description: "Meeting notes that turn into tasks on a shared board." },
-  { value: "agency", usagePath: "both", label: "I work with clients", description: "Everything a team gets, plus a page each client can follow." },
-];
-
-const STUDENT_MOVES = [
-  { href: "/meetings/new?method=upload", label: "Upload a lecture", description: "A recording you already have." },
-  { href: "/courses", label: "Add my courses", description: "Keep each subject's notes together." },
-  { href: "/dashboard", label: "Look around first", description: "Open the workspace and explore." },
-];
-
-const FIRST_MOVES = [
-  { href: "/meetings/new?method=upload", label: "Upload a recording", description: "A meeting, client call or lecture you already have." },
-  { href: "/meetings/new?method=link", label: "Send the notetaker to a call", description: "Paste a Google Meet, Zoom or Teams link." },
-  { href: "/projects", label: "Set up a board", description: "Organise the work before the first meeting." },
-  { href: "/settings", label: "Invite my team", description: "Bring people into the workspace." },
-  { href: "/dashboard", label: "Look around first", description: "Open the workspace and explore." },
-];
-
-function messageFor(error: unknown) {
-  return error instanceof ApiRequestError ? error.message : "Connection issue. Check your internet and try again.";
-}
-
-/**
- * Onboarding runs in two steps because the account arrives with no workspace at
- * all — registration creates only a user. Step one records a personalisation
- * preference; step two is what actually calls the workspace endpoint, so the
- * person naming the workspace is the one who owns it.
- */
-function Onboarding() {
-  const router = useRouter();
-  const { workspace, createWorkspaceIfMissing, refreshUser } = useAuth();
-
-  const [step, setStep] = useState<"path" | "workspace" | "start">("path");
-  const [selectedType, setSelectedType] = useState<WorkspaceType>("team");
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [isBusy, setIsBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handlePathSubmit() {
-    setIsBusy(true);
-    setError("");
-    try {
-      await saveUsagePath(typeOptions.find((o) => o.value === selectedType)!.usagePath);
-      // Creating the workspace here rather than on the next click means the
-      // default name is on screen to edit instead of an empty field.
-      const created = workspace ?? (await createWorkspaceIfMissing());
-      await setWorkspaceType(selectedType);
-      setWorkspaceName(created.name);
-      setStep("workspace");
-    } catch (requestError) {
-      setError(messageFor(requestError));
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function handleWorkspaceSubmit() {
-    const name = workspaceName.trim();
-    if (!name) {
-      setError("Give your workspace a name.");
-      return;
-    }
-    if (name.length > 100) {
-      setError("Keep the name under 100 characters.");
-      return;
-    }
-
-    setIsBusy(true);
-    setError("");
-    try {
-      if (name !== workspace?.name) await renameWorkspace(name);
-      await refreshUser();
-      setStep("start");
-    } catch (requestError) {
-      setError(messageFor(requestError));
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <p className="eyebrow">{step === "path" ? "01 — A clear place to begin" : step === "workspace" ? "02 — Name the space" : "03 — First move"}</p>
-      <h1>{step === "path" ? <>What brings you to <em>VOII?</em></> : step === "workspace" ? <>Somewhere to keep <em>all of it.</em></> : <>How do you want to <em>start?</em></>}</h1>
-      <p>
-        {step === "path"
-          ? "Your account is ready. This sets up your menu, and you can change it in Settings."
-          : step === "workspace" ? "Everything VOII files lands here. You can rename it any time from settings."
-          : "Your workspace is ready. Pick a first move and we’ll take you straight there."}
-      </p>
-
-      {step === "start" ? (
-        <div className="workspace-onboarding">
-          <div className="workspace-onboarding__choices">
-            {(selectedType === "student" ? STUDENT_MOVES : FIRST_MOVES).map((move) => <button key={move.href} className="workspace-onboarding__choice" type="button" onClick={() => router.replace(move.href)}>
-              <span className="workspace-onboarding__choice-copy"><strong>{move.label}</strong><span>{move.description}</span></span>
-              <span className="workspace-onboarding__choice-mark" aria-hidden="true">→</span>
-            </button>)}
-          </div>
-        </div>
-      ) : step === "path" ? (
-        <div className="workspace-onboarding">
-          <p className="workspace-onboarding__label">Choose the closest fit</p>
-          <div className="workspace-onboarding__choices" role="radiogroup" aria-label="Choose your starting point">
-            {typeOptions.map((option) => {
-              const isSelected = option.value === selectedType;
-              return (
-                <button
-                  className={`workspace-onboarding__choice${isSelected ? " is-selected" : ""}`}
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => { setSelectedType(option.value); setError(""); }}
-                >
-                  <span className="workspace-onboarding__choice-copy"><strong>{option.label}</strong><span>{option.description}</span></span>
-                  <span className="workspace-onboarding__choice-mark" aria-hidden="true">{isSelected ? "✓" : ""}</span>
-                </button>
-              );
-            })}
-          </div>
-          {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
-          <button className="workspace-entry-page__continue" type="button" onClick={handlePathSubmit} disabled={isBusy} aria-busy={isBusy}>
-            {isBusy ? "Setting things up…" : "Continue"}<span aria-hidden="true">→</span>
-          </button>
-        </div>
-      ) : (
-        <div className="workspace-onboarding">
-          <form method="post"
-            className="auth-form"
-            onSubmit={(event) => { event.preventDefault(); void handleWorkspaceSubmit(); }}
-            noValidate
-          >
-            <div className="auth-field">
-              <div className="auth-label-row"><label htmlFor="workspace-name">Workspace name</label></div>
-              <input
-                id="workspace-name"
-                name="workspaceName"
-                type="text"
-                value={workspaceName}
-                autoComplete="organization"
-                placeholder="Northstar launch"
-                maxLength={100}
-                aria-invalid={Boolean(error)}
-                onChange={(event) => { setWorkspaceName(event.target.value); setError(""); }}
-              />
-            </div>
-            {error ? <p className="auth-form__alert" role="alert">{error}</p> : null}
-            <button className="workspace-entry-page__continue" type="submit" disabled={isBusy} aria-busy={isBusy}>
-              {isBusy ? "Saving…" : "Open your workspace"}<span aria-hidden="true">→</span>
-            </button>
-          </form>
-        </div>
-      )}
-    </>
-  );
-}
 
 function WorkspaceEntry() {
   const { user, workspace } = useAuth();
@@ -215,9 +54,7 @@ export default function ProtectedWorkspacePage({ kind }: { kind: "dashboard" | "
           </button>
         </header>
         <UnverifiedBanner />
-        <section className="workspace-entry-page__content">
-          {isOnboarding ? <Onboarding /> : <WorkspaceEntry />}
-        </section>
+        {isOnboarding ? <Onboarding /> : <section className="workspace-entry-page__content"><WorkspaceEntry /></section>}
       </main>
     </AuthGate>
   );

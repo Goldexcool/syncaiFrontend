@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ComposerPanel } from "@/components/app/parts";
 import { Icon, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
 import { getUsageInfo, type UsageInfo } from "@/lib/api/app";
-import { ensureWorkspace, renameWorkspace, setAiMemory, setAutoApprove, setVocabulary, setWorkspaceType, type AutoApprove, type WorkspaceType } from "@/lib/api/auth";
+import { ensureWorkspace, renameWorkspace, setAiMemory, setAutoApprove, setVocabulary, type AutoApprove } from "@/lib/api/auth";
 import {
   cancelInvite, changePassword, deleteAccount, disconnectGoogleCalendar, getGoogleCalendarAuthUrl, getNotificationPreferences,
   listIntegrations, listPendingInvites, listWorkspaceMembers, removeMember, saveNotificationPreferences, updateMemberRole, updateProfile,
@@ -187,23 +187,17 @@ function NotificationSection() {
 // ── Workspace ──────────────────────────────────────────────────────────────
 
 function WorkspaceSection() {
-  const { workspace, refreshUser } = useAuth();
+  const { workspace } = useAuth();
   const [name, setName] = useState(workspace?.name ?? "");
-  const [type, setType] = useState<WorkspaceType>(workspace?.type ?? "team");
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
   const canEdit = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
   useEffect(() => { if (workspace?.name) setName(workspace.name); }, [workspace?.name]);
-  useEffect(() => { if (workspace?.type) setType(workspace.type); }, [workspace?.type]);
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError("Give the workspace a name."); return; }
     setState("saving"); setError("");
-    try {
-      await renameWorkspace(name.trim());
-      if (type !== workspace?.type) { await setWorkspaceType(type); await refreshUser(); }
-      setState("saved");
-    }
+    try { await renameWorkspace(name.trim()); setState("saved"); }
     catch (err) { setError(getErrorMessage(err)); setState("idle"); }
   }
   return <form method="post" onSubmit={save}>
@@ -211,13 +205,7 @@ function WorkspaceSection() {
       footer={canEdit ? <><Status error={error} ok={state === "saved" ? "Saved." : ""} /><button className="dashboard-primary-button" type="submit" disabled={state === "saving"}>{state === "saving" ? "Saving…" : "Save"}</button></> : undefined}>
       <label className="field settings-field--narrow"><span>Workspace name</span><input value={name} onChange={(e) => { setName(e.target.value); setState("idle"); }} maxLength={80} readOnly={!canEdit} />
         {canEdit ? null : <small>Only owners and admins can rename the workspace.</small>}</label>
-      <label className="field settings-field--narrow"><span>Used for</span>
-        <select value={type} disabled={!canEdit} onChange={(e) => { setType(e.target.value as WorkspaceType); setState("idle"); }}>
-          <option value="team">A team</option>
-          <option value="student">Studying</option>
-          <option value="agency">Client work</option>
-        </select>
-        <small>Changes the menu and wording. Your data stays the same.</small></label>
+      <div className="field settings-field--narrow"><span>Account type</span><p>{workspace?.type === "student" ? "Student" : workspace?.type === "agency" ? "Client work" : "Team"}</p><small>This was set when you joined and can’t be changed.</small></div>
     </Section>
   </form>;
 }

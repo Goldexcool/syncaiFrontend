@@ -23,7 +23,7 @@ export type Workspace = {
   status?: string;
   actionItemAutoApprove?: AutoApprove;
   vocabulary?: string[];
-  type?: WorkspaceType;
+  type?: WorkspaceType | null;
   aiMemory?: string[];
 };
 

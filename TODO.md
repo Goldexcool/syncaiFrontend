@@ -29,10 +29,10 @@ Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync`
 
 ## Library and transcription accuracy
 
-Built 2026-11-06 on branches `claude/personalisation-context-f77d6f` (voii) and `claude/library` (sync, in `~/projects/sync-library`). Not pushed.
+Built 2026-11-06 on branches `claude/personalisation-context-f77d6f` (voii) and `claude/library` (sync, in `~/projects/sync-library`). Pushed to both `main` branches 2026-11-06; sync as `e45d932` without the unpushed cleanup `6f4de2f`.
 
 - **[needs you]** **ElevenLabs is out of credits.** Accuracy tests used most or all of the 10,000 quota on the key Render uses. Until it's topped up or resets, meetings fall back to Deepgram, which captured 77 words on the 11-minute test call against 289-540 for Scribe.
-- **Deploy:** the `syncaibackend` Render build runs `prisma migrate deploy`, so pushing `claude/library` to `main` adds `library_docs` before the new code starts. The worker reads that table for every meeting, so don't start the new code any other way without the migration. Applied locally 2026-11-06; not yet on production.
+- **Deploy:** the `syncaibackend` Render build runs `prisma migrate deploy`, so pushing `claude/library` to `main` adds `library_docs` before the new code starts. The worker reads that table for every meeting, so don't start the new code any other way without the migration. Applied on production by the 2026-11-06 deploy.
 - **Still to measure, once credits are back:** keyterms on the real recording, a full meeting through the worker with Library terms, and whether splitting audio into chunks stops Scribe losing minutes. Scribe swung 289-540 words on the same file and lost minute 7 on every run.
 - **Needs fresh audio:** a recording of real speech with a known transcript, including Pidgin, Upstack and obstacle. Live correction was tuned on the same 37 Recall lines it was scored on.
 - Recall's accurate mode was tested and rejected: invented French and made-up lines on Pidgin, and key terms changed nothing.

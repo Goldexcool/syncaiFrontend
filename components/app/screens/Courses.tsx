@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import AppShell from "@/components/app/AppShell";
 import { formatClock } from "@/components/app/Notes";
 import { Icon, StartPanel, formatDate, getErrorMessage } from "@/components/app/kit";
+import { DocList } from "@/components/app/screens/Library";
 import { StatusChip } from "@/components/app/screens/Meetings";
 import { createCourse, deleteCourse, getCourse, listCourses, updateCourse, type Course, type CourseLecture } from "@/lib/api/app";
 
@@ -102,6 +103,7 @@ function CourseBody({ id }: { id: string }) {
         </Link>)}
       </div> : <p className="app-muted">No lectures yet. Add one and its notes and study tools appear here.</p>}
     </section>
+    <DocList courseId={id} />
     <form method="post" className="dashboard-surface course-form" onSubmit={saveTerms}>
       <label className="field"><span>Words VOII should spell right</span>
         <input value={terms} onChange={(e) => { setTerms(e.target.value); setSaved(false); }} placeholder="Benzene, Hückel, nucleophile" />

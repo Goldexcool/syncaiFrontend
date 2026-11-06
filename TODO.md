@@ -27,6 +27,17 @@ Repos: frontend `~/projects/voii` (`redesign/verity`), backend `~/projects/sync`
 
 - UX simplification done (2026-11-06): Tasks and Boards as the only words, five-item menu, no bell or sparkle icon, AI page opens from Search, three-card-free Home, three meeting tabs, plain page headings, one account-based recording flow. Teams can no longer mark a recording as a lecture.
 
+## Library and transcription accuracy
+
+Built 2026-11-06 on branches `claude/personalisation-context-f77d6f` (voii) and `claude/library` (sync, in `~/projects/sync-library`). Not pushed.
+
+- **[needs you]** **ElevenLabs is out of credits.** Accuracy tests used most or all of the 10,000 quota on the key Render uses. Until it's topped up or resets, meetings fall back to Deepgram, which captured 77 words on the 11-minute test call against 289-540 for Scribe.
+- **Deploy order:** run the `20261106140000_library_docs` migration on Neon before the new API and worker start. The worker reads `library_docs` for every meeting, so processing fails without the table. Check how migrations run on Render first; nothing in the repo runs them.
+- **Still to measure, once credits are back:** keyterms on the real recording, a full meeting through the worker with Library terms, and whether splitting audio into chunks stops Scribe losing minutes. Scribe swung 289-540 words on the same file and lost minute 7 on every run.
+- **Needs fresh audio:** a recording of real speech with a known transcript, including Pidgin, Upstack and obstacle. Live correction was tuned on the same 37 Recall lines it was scored on.
+- Recall's accurate mode was tested and rejected: invented French and made-up lines on Pidgin, and key terms changed nothing.
+- Scanned PDFs have no text to read, so they're refused with a message. Add OCR if people need it.
+
 ## Blockers for launch
 
 1. **[needs you]** **`APP_URL` is missing on Render**, so production emails link to `http://localhost:3000`. That covers verification, password reset and invites. Set `APP_URL=https://usevoii.com` on `syncaibackend` (Dashboard → Environment), then redeploy. The CLI has no env-var command, and my API call to set it was blocked.

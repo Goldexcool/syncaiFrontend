@@ -118,6 +118,15 @@ export const getCourse = (id: string) => apiClient.get<{ course: Course; lecture
 export const updateCourse = (id: string, payload: Partial<Pick<Course, "name" | "code" | "lecturer" | "keyterms">>) => apiClient.patch<{ course: Course }>(`/courses/${id}`, payload);
 export const deleteCourse = (id: string) => apiClient.delete(`/courses/${id}`);
 
+// ── Library ────────────────────────────────────────────────
+
+export type LibraryDoc = { id: string; title: string; body?: string; fileName?: string | null; about?: string | null; terms: string[]; courseId?: string | null; updatedAt: string; createdBy?: { fullName: string | null } };
+export const listLibraryDocs = (courseId?: string) => apiClient.get<{ docs: LibraryDoc[] }>(`/library${courseId ? `?courseId=${courseId}` : ""}`);
+export const getLibraryDoc = (id: string) => apiClient.get<{ doc: LibraryDoc }>(`/library/${id}`);
+export const createLibraryDoc = (payload: { title: string; body: string; fileName?: string; courseId?: string }) => apiClient.post<{ doc: LibraryDoc }>("/library", payload);
+export const updateLibraryDoc = (id: string, payload: { title?: string; body?: string; terms?: string[] }) => apiClient.patch<{ doc: LibraryDoc }>(`/library/${id}`, payload);
+export const deleteLibraryDoc = (id: string) => apiClient.delete(`/library/${id}`);
+
 // ── Study tools ────────────────────────────────────────────
 
 export type Quiz = { questions: Array<{ question: string; options: string[]; answer: number; why: string }> };

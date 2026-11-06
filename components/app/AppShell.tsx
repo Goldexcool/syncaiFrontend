@@ -13,12 +13,13 @@ import type { WorkspaceType } from "@/lib/api/auth";
 import { getUnreadNotificationCount, listProjects, type Project } from "@/lib/api/dashboard";
 
 /** The flow's navigation: one place per job, in the order the work happens. */
-const NAV: Array<{ href: string; label: string; icon: IconName; match: (p: string) => boolean; only?: WorkspaceType }> = [
+const NAV: Array<{ href: string; label: string; icon: IconName; match: (p: string) => boolean; only?: WorkspaceType; hide?: WorkspaceType }> = [
   { href: "/dashboard", label: "Home", icon: "home", match: (p) => p === "/dashboard" },
   { href: "/meetings", label: "Meetings", icon: "conversation", match: (p) => p.startsWith("/meetings") },
   { href: "/courses", label: "Courses", icon: "knowledge", match: (p) => p.startsWith("/courses"), only: "student" },
   { href: "/clients", label: "Clients", icon: "globe", match: (p) => p.startsWith("/clients"), only: "agency" },
   { href: "/projects", label: "Boards", icon: "board", match: (p) => p.startsWith("/projects") || p.startsWith("/board") || p.startsWith("/tasks") },
+  { href: "/library", label: "Library", icon: "knowledge", match: (p) => p.startsWith("/library"), hide: "student" },
   { href: "/inbox", label: "Inbox", icon: "inbox", match: (p) => p.startsWith("/inbox") },
 ];
 
@@ -82,7 +83,7 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
 
         <nav className="dashboard-nav" aria-label="Primary">
           <p className="dashboard-nav__label">Workspace</p>
-          {NAV.filter((item) => !item.only || item.only === type).map((item) => <Link key={item.href} href={item.href} className={`dashboard-nav-item ${item.match(pathname) ? "is-active" : ""}`} aria-current={item.match(pathname) ? "page" : undefined}>
+          {NAV.filter((item) => (!item.only || item.only === type) && item.hide !== type).map((item) => <Link key={item.href} href={item.href} className={`dashboard-nav-item ${item.match(pathname) ? "is-active" : ""}`} aria-current={item.match(pathname) ? "page" : undefined}>
             <Icon name={item.icon} size={17} /><span>{item.href === "/meetings" ? words.Meetings : item.label}</span>
             {item.href === "/meetings" && reviewCount ? <span className="shell-count shell-count--peach" title="Needs review">{reviewCount}</span> : null}
             {item.href === "/inbox" && unread ? <span className="shell-count">{unread}</span> : null}

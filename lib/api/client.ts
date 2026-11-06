@@ -107,11 +107,14 @@ let accessToken: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 let onSessionExpired: (() => void) | null = null;
 
-function getApiBaseUrl() {
-  if (typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname) && configuredApiBaseUrl.includes("localhost")) {
-    return "/api";
-  }
-  return configuredApiBaseUrl;
+/**
+ * Sign-in goes through usevoii.com so its cookie is first-party. Browsers that
+ * block third-party cookies dropped it on onrender.com, which signed people out
+ * on every page load.
+ */
+function getApiBaseUrl(path: string) {
+  const deployed = typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+  return deployed && (path.startsWith("/auth/") || configuredApiBaseUrl.includes("localhost")) ? "/api" : configuredApiBaseUrl;
 }
 
 export function setAccessToken(token: string | null) {
@@ -269,7 +272,7 @@ async function performRequest<T>(path: string, init: RequestInit = {}, includeAu
 
   let response: Response;
   try {
-    response = await fetch(`${getApiBaseUrl()}${normalizedPath}`, {
+    response = await fetch(`${getApiBaseUrl(normalizedPath)}${normalizedPath}`, {
       credentials: "include",
       ...init,
       headers,

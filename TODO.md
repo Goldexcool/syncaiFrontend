@@ -36,6 +36,7 @@ Built 2026-11-06 on branches `claude/personalisation-context-f77d6f` (voii) and 
 - **Still to measure, once credits are back:** keyterms on the real recording, a full meeting through the worker with Library terms, and whether splitting audio into chunks stops Scribe losing minutes. Scribe swung 289-540 words on the same file and lost minute 7 on every run.
 - **Needs fresh audio:** a recording of real speech with a known transcript, including Pidgin, Upstack and obstacle. Live correction was tuned on the same 37 Recall lines it was scored on.
 - Recall's accurate mode was tested and rejected: invented French and made-up lines on Pidgin, and key terms changed nothing.
+- Sign-in now uses `usevoii.com/api/auth/*` so its cookie is first-party. That route goes through Vercel, so check sign-in still works when Render is waking from sleep.
 - Scanned PDFs have no text to read, so they're refused with a message. Add OCR if people need it.
 
 ## Blockers for launch

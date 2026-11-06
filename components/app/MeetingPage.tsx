@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import AppShell from "@/components/app/AppShell";
+import { useAuth } from "@/components/AuthProvider";
+import { StudyTools } from "@/components/app/Study";
 import { Markdown, formatClock, summaryToMarkdown } from "@/components/app/Notes";
 import { Icon, formatDate, formatTime, type IconName } from "@/components/app/kit";
 import { ApiRequestError } from "@/lib/api/client";
 import {
-  askMeeting, correctMeeting, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
+  askMeeting, correctMeeting, correctNotes, bulkUpdateActionItems, convertToTasks, createBoard, createProjectQuick, createShare, getBotStatus, getMeeting, getProcessingStatus, getSummary, getTranscript,
   listActionItems, listAllProjects, listTaskUpdates, listTasksForMeeting, decideTaskUpdate, listBoards, getBoard, reprocessMeeting, sendBot, updateActionItem, uploadRecording,
   type ActionItem, type BoardColumn, type TaskUpdateSuggestion, type MeetingDetail, type ProcessingStatus, type Segment, type Summary,
 } from "@/lib/api/app";
@@ -19,7 +21,7 @@ const DONE = new Set(["pending_review", "tasks_created", "completed"]);
 const LIVE = new Set(["joined", "recording"]);
 const BOT_ACTIVE = new Set(["scheduled", "joining", "joined", "recording", "leaving"]);
 const msg = (e: unknown) => (e instanceof ApiRequestError ? e.message : e instanceof Error ? e.message : "Something went wrong.");
-type Tab = "overview" | "summary" | "action-items" | "tasks";
+type Tab = "overview" | "summary" | "study" | "action-items" | "tasks";
 
 export default function MeetingPage({ id }: { id: string }) {
   const [title, setTitle] = useState("Meeting");
@@ -27,6 +29,7 @@ export default function MeetingPage({ id }: { id: string }) {
 }
 
 function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void }) {
+  const { workspace } = useAuth();
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -51,7 +54,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t && ["overview", "summary", "action-items", "tasks"].includes(t)) setTabState(t as Tab);
+    if (t && ["overview", "summary", "study", "action-items", "tasks"].includes(t)) setTabState(t as Tab);
   }, []);
   const setTab = (t: Tab) => { setTabState(t); window.history.replaceState(null, "", `?tab=${t}`); };
 
@@ -118,6 +121,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
   if (!meeting) return <p className="app-muted">Opening…</p>;
 
   const isLecture = meeting.kind === "lecture";
+  const studying = isLecture || workspace?.type === "student";
   const markdown = summary ? summaryToMarkdown(summary) : "";
   const pendingItems = items.filter((i) => i.status === "pending_review").length + updates.filter((u) => u.state === "pending").length;
   const date = new Date(meeting.createdAt ?? Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
@@ -187,6 +191,7 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
             {([
               ["overview", "Overview", "home"],
               ["summary", isLecture ? "Notes" : "Summary", "sparkles"],
+              ...(studying ? [["study", "Study", "knowledge"] as const] : []),
               ["action-items", "Action items", "check"],
               ["tasks", "Tasks", "board"],
             ] as const).map(([value, label, icon]) => <button key={value} role="tab" aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
@@ -195,8 +200,9 @@ function MeetingView({ id, onTitle }: { id: string; onTitle: (t: string) => void
             </button>)}
           </nav>
 
-          {tab === "overview" ? <Overview meeting={meeting} summary={summary} items={items} updates={updates} speakers={speakers} markdown={markdown} onTab={setTab} /> : null}
+          {tab === "overview" ? <Overview meeting={meeting} summary={summary} items={items} updates={updates} speakers={speakers} markdown={markdown} onTab={setTab} onCorrected={load} /> : null}
           {tab === "summary" ? <SummaryTab meeting={meeting} summary={summary} markdown={markdown} onShare={() => setShareOpen(true)} /> : null}
+          {tab === "study" ? <StudyTools meetingId={id} /> : null}
           {tab === "action-items" ? <>
             <BoardUpdates meetingId={id} updates={updates} setUpdates={setUpdates} onError={setError} />
             <ActionItemsReview meetingId={id} items={items} setItems={setItems} onError={setError} />
@@ -241,8 +247,43 @@ function speakerShare(segments: Segment[]): SpeakerStat[] {
 }
 const initialsOf = (name: string) => name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
-function Overview({ meeting, summary, items, updates, speakers, markdown, onTab }: {
-  meeting: MeetingDetail; summary: Summary | null; items: ActionItem[]; updates: TaskUpdateSuggestion[]; speakers: SpeakerStat[]; markdown: string; onTab: (t: Tab) => void;
+/** Say what VOII got wrong: it rewrites these notes and remembers for later meetings. */
+function CorrectNotes({ meetingId, onCorrected }: { meetingId: string; onCorrected: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState("");
+  const [error, setError] = useState("");
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (text.trim().length < 3) return;
+    setBusy(true); setError("");
+    try {
+      await correctNotes(meetingId, text.trim(), remember);
+      await onCorrected();
+      setText(""); setOpen(false);
+      setDone(remember ? "Notes rewritten. VOII will remember this for later meetings." : "Notes rewritten.");
+    } catch (err) { setError(msg(err)); } finally { setBusy(false); }
+  }
+  if (!open) return <div className="note-fix__closed">
+    <button className="dashboard-text-button" type="button" onClick={() => { setOpen(true); setDone(""); }}>Something wrong?</button>
+    {done ? <span className="app-muted" role="status">{done}</span> : null}
+  </div>;
+  return <form method="post" className="note-fix" onSubmit={submit}>
+    <label className="field"><span>What did VOII get wrong?</span>
+      <textarea autoFocus rows={3} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} placeholder="Ada leads design, not Ade. We chose the May launch, not June." /></label>
+    <label className="app-check"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember this for later meetings</label>
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+    <div className="tp-fix__actions">
+      <button className="dashboard-quiet-button" type="button" onClick={() => setOpen(false)}>Cancel</button>
+      <button className="dashboard-primary-button" type="submit" disabled={busy || text.trim().length < 3}>{busy ? "Rewriting…" : "Fix the notes"}</button>
+    </div>
+  </form>;
+}
+
+function Overview({ meeting, summary, items, updates, speakers, markdown, onTab, onCorrected }: {
+  meeting: MeetingDetail; summary: Summary | null; items: ActionItem[]; updates: TaskUpdateSuggestion[]; speakers: SpeakerStat[]; markdown: string; onTab: (t: Tab) => void; onCorrected: () => Promise<void>;
 }) {
   const pending = items.filter((i) => i.status === "pending_review");
   const pendingUpdates = updates.filter((u) => u.state === "pending");
@@ -257,6 +298,7 @@ function Overview({ meeting, summary, items, updates, speakers, markdown, onTab 
         <div className="dashboard-section-heading"><h2>{meeting.kind === "lecture" ? "In short" : "Summary"}</h2></div>
         {summary?.short ? <p className="lead">{summary.short}</p> : markdown ? <p className="lead">{markdown.slice(0, 280)}…</p> : <p className="app-muted">No summary for this recording.</p>}
         <button className="dashboard-text-button" type="button" onClick={() => onTab("summary")}>{meeting.kind === "lecture" ? "Read the full notes" : "Read the full summary"} <Icon name="arrow" size={13} /></button>
+        {summary ? <CorrectNotes meetingId={meeting.id} onCorrected={onCorrected} /> : null}
       </section>}
       <section className="review-card">
         <header><span className="chip chip--peach"><Icon name="sparkles" size={12} /> {pending.length + pendingUpdates.length} to review</span></header>

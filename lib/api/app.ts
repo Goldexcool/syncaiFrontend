@@ -38,7 +38,7 @@ export type ActionItem = {
   sourceQuote?: { text?: string; time?: number; speaker?: string | null } | null;
 };
 
-export type Course = { id: string; name: string; code?: string | null; lecturer?: string | null; keyterms: string[] };
+export type Course = { id: string; name: string; code?: string | null; lecturer?: string | null; keyterms: string[]; lectureCount?: number };
 
 export type BoardTask = { id: string; title: string; priority?: string; status?: string; dueDate?: string | null; labels?: string[]; sourceMeetingId?: string | null; assignees?: Array<{ user: { id?: string; fullName?: string | null; email?: string | null } }> };
 export type BoardColumn = { id: string; name: string; order: number; tasks: BoardTask[] };
@@ -113,11 +113,27 @@ export const moveTask = (taskId: string, payload: { columnId: string; order: num
 export const listCourses = () => apiClient.get<{ courses: Course[] }>("/courses");
 export const createCourse = (payload: { name: string; code?: string; lecturer?: string; keyterms?: string[] }) => apiClient.post<{ course: Course }>("/courses", payload);
 
+export type CourseLecture = { id: string; title: string; status?: string | null; durationSec?: number | null; shortSummary?: string | null; createdAt: string };
+export const getCourse = (id: string) => apiClient.get<{ course: Course; lectures: CourseLecture[] }>(`/courses/${id}`);
+export const updateCourse = (id: string, payload: Partial<Pick<Course, "name" | "code" | "lecturer" | "keyterms">>) => apiClient.patch<{ course: Course }>(`/courses/${id}`, payload);
+export const deleteCourse = (id: string) => apiClient.delete(`/courses/${id}`);
+
+// ── Study tools ────────────────────────────────────────────
+
+export type Quiz = { questions: Array<{ question: string; options: string[]; answer: number; why: string }> };
+export type Lesson = { title: string; sections: Array<{ heading: string; explain: string; example?: string | null }> };
+export type UnderstandingCheck = { verdict: "solid" | "partly" | "not_yet"; right: string[]; missing: string[]; next: string };
+export const getQuiz = (meetingId: string) => apiClient.post<Quiz>(`/meetings/${meetingId}/study`, { mode: "quiz" });
+export const getLesson = (meetingId: string) => apiClient.post<Lesson>(`/meetings/${meetingId}/study`, { mode: "lesson" });
+export const checkUnderstanding = (meetingId: string, explanation: string) => apiClient.post<UnderstandingCheck>(`/meetings/${meetingId}/study`, { mode: "check", explanation });
+
 // ── Bot ────────────────────────────────────────────────────────────────────
 
 export const sendBot = (meetingId: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/join`, { botName });
 export const scheduleBot = (meetingId: string, joinAt: string, botName = "VOII Notetaker") => apiClient.post<{ botSession: { id: string; status: string } }>(`/meetings/${meetingId}/bot/schedule`, { joinAt, botName });
 export const setEventBot = (eventId: string, enabled: boolean) => apiClient.patch<{ event: { id: string; botEnabled: boolean; meetingId?: string | null } }>(`/calendar/events/${eventId}/bot`, { enabled });
+export const correctNotes = (meetingId: string, text: string, remember: boolean) =>
+  apiClient.post<{ remembered: boolean }>(`/meetings/${meetingId}/transcript/notes-correction`, { text, remember });
 export const correctMeeting = (meetingId: string, body: { kind: "word" | "speaker"; from: string; to: string; remember?: boolean; forget?: boolean }) =>
   apiClient.post<{ changed: number; remembered: boolean }>(`/meetings/${meetingId}/transcript/corrections`, body);
 export const askMeeting = (meetingId: string, question: string) => apiClient.post<{ answer: string; linesConsidered: number }>(`/meetings/${meetingId}/ask`, { question });

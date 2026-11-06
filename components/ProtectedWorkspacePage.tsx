@@ -8,24 +8,18 @@ import { useAuth } from "@/components/AuthProvider";
 import { Logo } from "@/components/SiteHeader";
 import UnverifiedBanner from "@/components/UnverifiedBanner";
 import { ApiRequestError } from "@/lib/api/client";
-import { renameWorkspace, saveUsagePath, type UsagePath } from "@/lib/api/auth";
+import { renameWorkspace, saveUsagePath, setWorkspaceType, type UsagePath, type WorkspaceType } from "@/lib/api/auth";
 
-const usagePathOptions: Array<{ value: UsagePath; label: string; description: string }> = [
-  {
-    value: "meeting_notes",
-    label: "Capture the conversation",
-    description: "Record meetings, lectures, and calls, then find the useful part again.",
-  },
-  {
-    value: "task_boards",
-    label: "Move the work forward",
-    description: "Turn decisions into tasks, owners, and next steps.",
-  },
-  {
-    value: "both",
-    label: "Keep the whole thread",
-    description: "Connect conversations to the work that follows them.",
-  },
+const typeOptions: Array<{ value: WorkspaceType; usagePath: UsagePath; label: string; description: string }> = [
+  { value: "student", usagePath: "meeting_notes", label: "I'm studying", description: "Record lectures, keep notes by course, and quiz yourself." },
+  { value: "team", usagePath: "both", label: "I work in a team", description: "Meeting notes that turn into tasks on a shared board." },
+  { value: "agency", usagePath: "both", label: "I work with clients", description: "Everything a team gets, plus a page each client can follow." },
+];
+
+const STUDENT_MOVES = [
+  { href: "/meetings/new?method=upload", label: "Upload a lecture", description: "A recording you already have." },
+  { href: "/courses", label: "Add my courses", description: "Keep each subject's notes together." },
+  { href: "/dashboard", label: "Look around first", description: "Open the workspace and explore." },
 ];
 
 const FIRST_MOVES = [
@@ -35,10 +29,6 @@ const FIRST_MOVES = [
   { href: "/settings", label: "Invite my team", description: "Bring people into the workspace." },
   { href: "/dashboard", label: "Look around first", description: "Open the workspace and explore." },
 ];
-
-function isUsagePath(value: string | null | undefined): value is UsagePath {
-  return value === "meeting_notes" || value === "task_boards" || value === "both";
-}
 
 function messageFor(error: unknown) {
   return error instanceof ApiRequestError ? error.message : "Connection issue. Check your internet and try again.";
@@ -52,26 +42,23 @@ function messageFor(error: unknown) {
  */
 function Onboarding() {
   const router = useRouter();
-  const { user, workspace, createWorkspaceIfMissing, refreshUser } = useAuth();
+  const { workspace, createWorkspaceIfMissing, refreshUser } = useAuth();
 
   const [step, setStep] = useState<"path" | "workspace" | "start">("path");
-  const [selectedPath, setSelectedPath] = useState<UsagePath>("both");
+  const [selectedType, setSelectedType] = useState<WorkspaceType>("team");
   const [workspaceName, setWorkspaceName] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (isUsagePath(user?.usagePath)) setSelectedPath(user.usagePath);
-  }, [user?.usagePath]);
 
   async function handlePathSubmit() {
     setIsBusy(true);
     setError("");
     try {
-      await saveUsagePath(selectedPath);
+      await saveUsagePath(typeOptions.find((o) => o.value === selectedType)!.usagePath);
       // Creating the workspace here rather than on the next click means the
       // default name is on screen to edit instead of an empty field.
       const created = workspace ?? (await createWorkspaceIfMissing());
+      await setWorkspaceType(selectedType);
       setWorkspaceName(created.name);
       setStep("workspace");
     } catch (requestError) {
@@ -108,10 +95,10 @@ function Onboarding() {
   return (
     <>
       <p className="eyebrow">{step === "path" ? "01 — A clear place to begin" : step === "workspace" ? "02 — Name the space" : "03 — First move"}</p>
-      <h1>{step === "path" ? <>Start with a <em>conversation.</em></> : step === "workspace" ? <>Somewhere to keep <em>all of it.</em></> : <>How do you want to <em>start?</em></>}</h1>
+      <h1>{step === "path" ? <>What brings you to <em>VOII?</em></> : step === "workspace" ? <>Somewhere to keep <em>all of it.</em></> : <>How do you want to <em>start?</em></>}</h1>
       <p>
         {step === "path"
-          ? "Your account is ready. Tell VOII what to lead with and the workspace will open on the thing you actually came for."
+          ? "Your account is ready. This sets up your menu, and you can change it in Settings."
           : step === "workspace" ? "Everything VOII files lands here. You can rename it any time from settings."
           : "Your workspace is ready. Pick a first move and we’ll take you straight there."}
       </p>
@@ -119,7 +106,7 @@ function Onboarding() {
       {step === "start" ? (
         <div className="workspace-onboarding">
           <div className="workspace-onboarding__choices">
-            {FIRST_MOVES.map((move) => <button key={move.href} className="workspace-onboarding__choice" type="button" onClick={() => router.replace(move.href)}>
+            {(selectedType === "student" ? STUDENT_MOVES : FIRST_MOVES).map((move) => <button key={move.href} className="workspace-onboarding__choice" type="button" onClick={() => router.replace(move.href)}>
               <span className="workspace-onboarding__choice-copy"><strong>{move.label}</strong><span>{move.description}</span></span>
               <span className="workspace-onboarding__choice-mark" aria-hidden="true">→</span>
             </button>)}
@@ -127,10 +114,10 @@ function Onboarding() {
         </div>
       ) : step === "path" ? (
         <div className="workspace-onboarding">
-          <p className="workspace-onboarding__label">What should VOII help with first?</p>
+          <p className="workspace-onboarding__label">Choose the closest fit</p>
           <div className="workspace-onboarding__choices" role="radiogroup" aria-label="Choose your starting point">
-            {usagePathOptions.map((option) => {
-              const isSelected = option.value === selectedPath;
+            {typeOptions.map((option) => {
+              const isSelected = option.value === selectedType;
               return (
                 <button
                   className={`workspace-onboarding__choice${isSelected ? " is-selected" : ""}`}
@@ -138,7 +125,7 @@ function Onboarding() {
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
-                  onClick={() => { setSelectedPath(option.value); setError(""); }}
+                  onClick={() => { setSelectedType(option.value); setError(""); }}
                 >
                   <span className="workspace-onboarding__choice-copy"><strong>{option.label}</strong><span>{option.description}</span></span>
                   <span className="workspace-onboarding__choice-mark" aria-hidden="true">{isSelected ? "✓" : ""}</span>

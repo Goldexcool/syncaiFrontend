@@ -10,14 +10,16 @@ import { NotificationPopover } from "@/components/app/parts";
 import { Icon, displayName, initials, type IconName } from "@/components/app/kit";
 import { getUsageInfo, listMeetingsFull, type MeetingDetail, type UsageInfo } from "@/lib/api/app";
 import { PLAN_LIMIT_EVENT } from "@/lib/api/client";
+import type { WorkspaceType } from "@/lib/api/auth";
 import { getUnreadNotificationCount, listNotifications, listProjects, markAllNotificationsRead, markNotificationRead, type Notification, type Project } from "@/lib/api/dashboard";
 
 /** The flow's navigation: one place per job, in the order the work happens. */
-const NAV: Array<{ href: string; label: string; icon: IconName; match: (p: string) => boolean }> = [
+const NAV: Array<{ href: string; label: string; icon: IconName; match: (p: string) => boolean; only?: WorkspaceType }> = [
   { href: "/dashboard", label: "Dashboard", icon: "home", match: (p) => p === "/dashboard" },
   { href: "/meetings", label: "Meetings", icon: "conversation", match: (p) => p.startsWith("/meetings") },
+  { href: "/courses", label: "Courses", icon: "knowledge", match: (p) => p.startsWith("/courses"), only: "student" },
   { href: "/projects", label: "Projects & boards", icon: "board", match: (p) => p.startsWith("/projects") || p.startsWith("/board") || p.startsWith("/tasks") },
-  { href: "/clients", label: "Client Workspace", icon: "globe", match: (p) => p.startsWith("/clients") },
+  { href: "/clients", label: "Client Workspace", icon: "globe", match: (p) => p.startsWith("/clients"), only: "agency" },
   { href: "/ai", label: "AI Assistant", icon: "sparkles", match: (p) => p.startsWith("/ai") },
   { href: "/inbox", label: "Inbox", icon: "inbox", match: (p) => p.startsWith("/inbox") },
 ];
@@ -30,6 +32,8 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
   const pathname = usePathname();
   const router = useRouter();
   const { user, workspace, logout } = useAuth();
+  const type = workspace?.type ?? "team";
+  const student = type === "student";
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -87,12 +91,12 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
           <button className="dashboard-mobile-close" type="button" onClick={() => setNavOpen(false)} aria-label="Close navigation"><Icon name="close" /></button>
         </div>
         <button className="shell-search" type="button" onClick={() => setPaletteOpen(true)}><Icon name="search" size={15} /><span>Search · Ask AI</span><kbd>⌘K</kbd></button>
-        <Link className="dashboard-primary-button shell-new" href="/meetings/new"><Icon name="plus" size={15} />New meeting</Link>
+        <Link className="dashboard-primary-button shell-new" href="/meetings/new"><Icon name="plus" size={15} />{student ? "New lecture" : "New meeting"}</Link>
 
         <nav className="dashboard-nav" aria-label="Primary">
           <p className="dashboard-nav__label">Workspace</p>
-          {NAV.map((item) => <Link key={item.href} href={item.href} className={`dashboard-nav-item ${item.match(pathname) ? "is-active" : ""}`} aria-current={item.match(pathname) ? "page" : undefined}>
-            <Icon name={item.icon} size={17} /><span>{item.label}</span>
+          {NAV.filter((item) => !item.only || item.only === type).map((item) => <Link key={item.href} href={item.href} className={`dashboard-nav-item ${item.match(pathname) ? "is-active" : ""}`} aria-current={item.match(pathname) ? "page" : undefined}>
+            <Icon name={item.icon} size={17} /><span>{student && item.href === "/meetings" ? "Lectures" : item.label}</span>
             {item.href === "/meetings" && reviewCount ? <span className="shell-count shell-count--peach" title="Ready for review">{reviewCount}</span> : null}
             {item.href === "/inbox" && unread ? <span className="shell-count">{unread}</span> : null}
           </Link>)}
@@ -122,7 +126,7 @@ function Shell({ crumbs, children, full }: { crumbs: string[]; children: ReactNo
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <button className="dashboard-mobile-menu" type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation"><span /><span /><span /></button>
-          <nav className="shell-crumbs" aria-label="Breadcrumb">{crumbs.map((c, i) => <span key={i} className={i === crumbs.length - 1 ? "is-current" : ""}>{i > 0 ? <span className="shell-crumbs__sep" aria-hidden="true">/</span> : null}{c}</span>)}</nav>
+          <nav className="shell-crumbs" aria-label="Breadcrumb">{crumbs.map((c) => (student && c === "Meetings" ? "Lectures" : c)).map((c, i) => <span key={i} className={i === crumbs.length - 1 ? "is-current" : ""}>{i > 0 ? <span className="shell-crumbs__sep" aria-hidden="true">/</span> : null}{c}</span>)}</nav>
           <div className="dashboard-topbar__actions">
             <button className="dashboard-icon-button dashboard-notification-button" type="button" aria-expanded={notifOpen} aria-label={unread ? `${unread} unread notifications` : "Notifications"} onClick={() => setNotifOpen((v) => !v)}><Icon name="bell" size={18} />{unread ? <span>{unread > 9 ? "9+" : unread}</span> : null}</button>
             <button className="dashboard-icon-button" type="button" aria-label="Ask VOII AI" onClick={() => setPaletteOpen(true)}><Icon name="sparkles" size={18} /></button>

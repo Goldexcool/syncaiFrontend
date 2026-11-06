@@ -23,7 +23,12 @@ export type Workspace = {
   status?: string;
   actionItemAutoApprove?: AutoApprove;
   vocabulary?: string[];
+  type?: WorkspaceType;
+  aiMemory?: string[];
 };
+
+/** Decides navigation and wording only. */
+export type WorkspaceType = "team" | "student" | "agency";
 
 export type AutoApprove = "off" | "confident" | "all";
 
@@ -99,6 +104,14 @@ export function setAutoApprove(actionItemAutoApprove: AutoApprove) {
 
 export function setVocabulary(vocabulary: string[]) {
   return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { vocabulary });
+}
+
+export function setWorkspaceType(type: WorkspaceType) {
+  return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { type });
+}
+
+export function setAiMemory(aiMemory: string[]) {
+  return apiClient.patch<CurrentWorkspaceData>("/workspaces/me", { aiMemory });
 }
 
 export function renameWorkspace(name: string) {

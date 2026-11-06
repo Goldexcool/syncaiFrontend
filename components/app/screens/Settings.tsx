@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ComposerPanel } from "@/components/app/parts";
 import { Icon, formatDate, getErrorMessage, initials, sentenceCase } from "@/components/app/kit";
 import { getUsageInfo, type UsageInfo } from "@/lib/api/app";
-import { ensureWorkspace, renameWorkspace, setAutoApprove, setVocabulary, type AutoApprove } from "@/lib/api/auth";
+import { ensureWorkspace, renameWorkspace, setAiMemory, setAutoApprove, setVocabulary, setWorkspaceType, type AutoApprove, type WorkspaceType } from "@/lib/api/auth";
 import {
   cancelInvite, changePassword, deleteAccount, disconnectGoogleCalendar, getGoogleCalendarAuthUrl, getNotificationPreferences,
   listIntegrations, listPendingInvites, listWorkspaceMembers, removeMember, saveNotificationPreferences, updateMemberRole, updateProfile,
@@ -21,7 +21,7 @@ import {
  */
 const SECTIONS: Array<{ group: string; items: Array<[id: string, label: string]> }> = [
   { group: "Account", items: [["profile", "Profile"], ["password", "Password"], ["notifications", "Notifications"]] },
-  { group: "Workspace", items: [["workspace", "General"], ["members", "Members"], ["action-items", "Action items"], ["vocabulary", "Vocabulary"], ["integrations", "Integrations"], ["plan", "Plan & usage"]] },
+  { group: "Workspace", items: [["workspace", "General"], ["members", "Members"], ["action-items", "Action items"], ["vocabulary", "Vocabulary"], ["memory", "What VOII remembers"], ["integrations", "Integrations"], ["plan", "Plan & usage"]] },
   { group: "", items: [["danger", "Delete account"]] },
 ];
 
@@ -49,6 +49,7 @@ function SettingsBody() {
         <MembersSection />
         <AutoApproveSection />
         <VocabularySection />
+        <MemorySection />
         <IntegrationsSection />
         <PlanSection />
         <DeleteAccountSection />
@@ -186,17 +187,23 @@ function NotificationSection() {
 // ── Workspace ──────────────────────────────────────────────────────────────
 
 function WorkspaceSection() {
-  const { workspace } = useAuth();
+  const { workspace, refreshUser } = useAuth();
   const [name, setName] = useState(workspace?.name ?? "");
+  const [type, setType] = useState<WorkspaceType>(workspace?.type ?? "team");
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
   const canEdit = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
   useEffect(() => { if (workspace?.name) setName(workspace.name); }, [workspace?.name]);
+  useEffect(() => { if (workspace?.type) setType(workspace.type); }, [workspace?.type]);
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError("Give the workspace a name."); return; }
     setState("saving"); setError("");
-    try { await renameWorkspace(name.trim()); setState("saved"); }
+    try {
+      await renameWorkspace(name.trim());
+      if (type !== workspace?.type) { await setWorkspaceType(type); await refreshUser(); }
+      setState("saved");
+    }
     catch (err) { setError(getErrorMessage(err)); setState("idle"); }
   }
   return <form method="post" onSubmit={save}>
@@ -204,6 +211,13 @@ function WorkspaceSection() {
       footer={canEdit ? <><Status error={error} ok={state === "saved" ? "Saved." : ""} /><button className="dashboard-primary-button" type="submit" disabled={state === "saving"}>{state === "saving" ? "Saving…" : "Save"}</button></> : undefined}>
       <label className="field settings-field--narrow"><span>Workspace name</span><input value={name} onChange={(e) => { setName(e.target.value); setState("idle"); }} maxLength={80} readOnly={!canEdit} />
         {canEdit ? null : <small>Only owners and admins can rename the workspace.</small>}</label>
+      <label className="field settings-field--narrow"><span>Used for</span>
+        <select value={type} disabled={!canEdit} onChange={(e) => { setType(e.target.value as WorkspaceType); setState("idle"); }}>
+          <option value="team">A team</option>
+          <option value="student">Studying</option>
+          <option value="agency">Client work</option>
+        </select>
+        <small>Changes the menu and wording. Your data stays the same.</small></label>
     </Section>
   </form>;
 }
@@ -306,6 +320,24 @@ function VocabularySection() {
       {words?.map((w) => <span key={w} className="vocab__word">{w}<button type="button" aria-label={`Remove ${w}`} onClick={() => void save(words.filter((x) => x !== w))}>×</button></span>)}
       <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={words?.length ? "Add another…" : "Type a word and press Enter"} aria-label="Add a word" disabled={words === null} maxLength={60} />
     </form>
+    {error ? <p className="app-error" role="alert">{error}</p> : null}
+  </Section>;
+}
+
+/** What people taught VOII by correcting it; used for every later set of notes. */
+function MemorySection() {
+  const [notes, setNotes] = useState<string[] | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => { ensureWorkspace().then((r) => setNotes(r.workspace?.aiMemory ?? [])).catch(() => setNotes([])); }, []);
+  async function forget(note: string) {
+    const prev = notes;
+    const next = (notes ?? []).filter((n) => n !== note);
+    setNotes(next); setError("");
+    try { await setAiMemory(next); } catch (e) { setNotes(prev); setError(getErrorMessage(e)); }
+  }
+  return <Section id="memory" title="What VOII remembers" description="When you correct a set of notes, VOII keeps the correction here and uses it for every later meeting in this workspace.">
+    {notes?.length ? <ul className="memory">{notes.map((n) => <li key={n}><span>{n}</span><button className="dashboard-text-button" type="button" onClick={() => void forget(n)}>Forget</button></li>)}</ul>
+      : <p className="app-muted">{notes ? "Nothing yet. Open a meeting and choose “Something wrong?” under the summary." : "Loading…"}</p>}
     {error ? <p className="app-error" role="alert">{error}</p> : null}
   </Section>;
 }

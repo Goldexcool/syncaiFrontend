@@ -27,7 +27,7 @@ export default function NewMeeting() {
 
 function NewMeetingBody() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, workspace } = useAuth();
   const [method, setMethod] = useState<Method>("upload");
   const [kind, setKind] = useState<MeetingKind>("meeting");
   const [title, setTitle] = useState("");
@@ -44,10 +44,13 @@ function NewMeetingBody() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const m = new URLSearchParams(window.location.search).get("method");
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get("method");
     if (m === "upload" || m === "link" || m === "calendar") setMethod(m);
-    listCourses().then((r) => { setCourses(r.courses); setCourseId(r.courses[0]?.id ?? "new"); }).catch(() => setCourseId("new"));
-  }, []);
+    const course = params.get("course");
+    if (course || workspace?.type === "student") setKind("lecture");
+    listCourses().then((r) => { setCourses(r.courses); setCourseId(course ?? r.courses[0]?.id ?? "new"); }).catch(() => setCourseId("new"));
+  }, [workspace?.type]);
   useEffect(() => { setBotName(`VOII Notetaker (for ${displayName(user?.fullName, user?.email).split(" ")[0]})`); }, [user]);
 
   const provider = providerFor(link.trim());

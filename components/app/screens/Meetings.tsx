@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/app/AppShell";
 import { formatClock } from "@/components/app/Notes";
+import { useAuth } from "@/components/AuthProvider";
 import { Icon, StartPanel, formatDate, formatTime } from "@/components/app/kit";
 import { listMeetingsFull, type MeetingDetail } from "@/lib/api/app";
 
@@ -41,6 +42,8 @@ export default function Meetings() {
 }
 
 function MeetingsBody() {
+  const { workspace } = useAuth();
+  const student = workspace?.type === "student";
   const [meetings, setMeetings] = useState<MeetingDetail[] | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [q, setQ] = useState("");
@@ -51,8 +54,8 @@ function MeetingsBody() {
 
   return <>
     <header className="dashboard-content__header">
-      <div><p className="dashboard-location">Meetings</p><h1>Every conversation.</h1><p className="dashboard-intro">{meetings ? `${meetings.length} in this workspace.` : "Loading…"}</p></div>
-      <div className="dashboard-content__actions"><Link className="dashboard-primary-button" href="/meetings/new"><Icon name="plus" size={15} />New meeting</Link></div>
+      <div><p className="dashboard-location">{student ? "Lectures" : "Meetings"}</p><h1>{student ? "Every lecture." : "Every conversation."}</h1><p className="dashboard-intro">{meetings ? `${meetings.length} in this workspace.` : "Loading…"}</p></div>
+      <div className="dashboard-content__actions"><Link className="dashboard-primary-button" href="/meetings/new"><Icon name="plus" size={15} />{student ? "New lecture" : "New meeting"}</Link></div>
     </header>
     <div className="list-toolbar">
       <div className="seg" role="tablist" aria-label="Filter meetings">
